@@ -1,0 +1,544 @@
+{
+  "createdAt": "2026-10-15T06:53:07.678Z",
+  "note": "Real chant. Thresholds tuned on even-indexed verses, reported on odd-indexed verses.",
+  "current": {
+    "method": "dtw",
+    "offsetWindow": 2,
+    "options": {
+      "corridor": 12,
+      "stepPenalty": 1,
+      "cap": 4,
+      "unvoicedRef": 1,
+      "unvoicedStu": 0.5,
+      "frameStep": 2
+    },
+    "wordErrorSt": 0.75,
+    "wordMajorSt": 1.25,
+    "phraseErrorSt": 1.5,
+    "phraseMajorSt": 2,
+    "keyShiftSt": 2.5,
+    "keyShiftMajorSt": 3.5,
+    "minCoverage": 0.5,
+    "scoreGood": 0.6,
+    "scoreBad": 1.5
+  },
+  "app": {
+    "keyShiftSt": 2.5,
+    "heldOut": {
+      "correct, same melody": {
+        "before": 0.047,
+        "flagged": 0.047,
+        "shownToStudent": 0.014,
+        "phrases": 279
+      },
+      "correct, other singer": {
+        "before": 0.069,
+        "flagged": 0.106,
+        "shownToStudent": 0.046,
+        "phrases": 348
+      },
+      "wrong ta'am": {
+        "before": 0.206,
+        "flagged": 0.529,
+        "shownToStudent": 0.206,
+        "phrases": 34
+      }
+    }
+  },
+  "verse": [
+    {
+      "method": "frames, global key (v1)",
+      "criterion": "phrase",
+      "threshold": 1.67,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.055,
+        "falseAlarmOtherSinger": 0.142,
+        "detectedWrongTaam": 0.333,
+        "detectedWrongTaamDisjunctive": 0.333,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.67,
+          "otherSinger": 0.98,
+          "wrongTaam": 1.25
+        },
+        "cases": {
+          "sameMelody": 253,
+          "otherSinger": 309,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.3,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.4,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 2
+          }
+        }
+      }
+    },
+    {
+      "method": "frames, global key (v1)",
+      "criterion": "worstWord",
+      "threshold": 3.39,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.016,
+        "falseAlarmOtherSinger": 0.123,
+        "detectedWrongTaam": 0.242,
+        "detectedWrongTaamDisjunctive": 0.242,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.82,
+          "otherSinger": 1.27,
+          "wrongTaam": 2.09
+        },
+        "cases": {
+          "sameMelody": 253,
+          "otherSinger": 309,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.2,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.24,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 0.5,
+            "cases": 2
+          }
+        }
+      }
+    },
+    {
+      "method": "frames, global key (v1)",
+      "criterion": "relWord",
+      "threshold": 2.46,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.02,
+        "falseAlarmOtherSinger": 0.1,
+        "detectedWrongTaam": 0.273,
+        "detectedWrongTaamDisjunctive": 0.273,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.11,
+          "otherSinger": 0.26,
+          "wrongTaam": 1.33
+        },
+        "cases": {
+          "sameMelody": 253,
+          "otherSinger": 309,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.22,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.24,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 0.5,
+            "cases": 2
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key",
+      "criterion": "phrase",
+      "threshold": 1,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.031,
+        "falseAlarmOtherSinger": 0.208,
+        "detectedWrongTaam": 0.303,
+        "detectedWrongTaamDisjunctive": 0.303,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.58,
+          "otherSinger": 0.79,
+          "wrongTaam": 0.89
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 288,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.24,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.32,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key",
+      "criterion": "worstWord",
+      "threshold": 1.5,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.027,
+        "falseAlarmOtherSinger": 0.139,
+        "detectedWrongTaam": 0.333,
+        "detectedWrongTaamDisjunctive": 0.333,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.67,
+          "otherSinger": 1.01,
+          "wrongTaam": 1.29
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 288,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.28,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.4,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key",
+      "criterion": "relWord",
+      "threshold": 0.71,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.034,
+        "falseAlarmOtherSinger": 0.097,
+        "detectedWrongTaam": 0.515,
+        "detectedWrongTaamDisjunctive": 0.515,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.06,
+          "otherSinger": 0.1,
+          "wrongTaam": 0.72
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 288,
+          "wrongTaam": 33
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.4,
+            "cases": 50
+          },
+          "1–2 st": {
+            "detected": 0.48,
+            "cases": 25
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 0.5",
+      "criterion": "phrase",
+      "threshold": 0.97,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.023,
+        "falseAlarmOtherSinger": 0.156,
+        "detectedWrongTaam": 0.323,
+        "detectedWrongTaamDisjunctive": 0.323,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.55,
+          "otherSinger": 0.74,
+          "wrongTaam": 0.88
+        },
+        "cases": {
+          "sameMelody": 261,
+          "otherSinger": 282,
+          "wrongTaam": 31
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.204,
+            "cases": 49
+          },
+          "1–2 st": {
+            "detected": 0.308,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 0.5",
+      "criterion": "worstWord",
+      "threshold": 1.24,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.034,
+        "falseAlarmOtherSinger": 0.213,
+        "detectedWrongTaam": 0.452,
+        "detectedWrongTaamDisjunctive": 0.452,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.62,
+          "otherSinger": 0.92,
+          "wrongTaam": 1.22
+        },
+        "cases": {
+          "sameMelody": 261,
+          "otherSinger": 282,
+          "wrongTaam": 31
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.347,
+            "cases": 49
+          },
+          "1–2 st": {
+            "detected": 0.577,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 0.5",
+      "criterion": "relWord",
+      "threshold": 0.66,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.038,
+        "falseAlarmOtherSinger": 0.092,
+        "detectedWrongTaam": 0.419,
+        "detectedWrongTaamDisjunctive": 0.419,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.05,
+          "otherSinger": 0.08,
+          "wrongTaam": 0.64
+        },
+        "cases": {
+          "sameMelody": 261,
+          "otherSinger": 282,
+          "wrongTaam": 31
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.347,
+            "cases": 49
+          },
+          "1–2 st": {
+            "detected": 0.423,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 2",
+      "criterion": "phrase",
+      "threshold": 1.13,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.019,
+        "falseAlarmOtherSinger": 0.194,
+        "detectedWrongTaam": 0.281,
+        "detectedWrongTaamDisjunctive": 0.281,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.6,
+          "otherSinger": 0.87,
+          "wrongTaam": 1.01
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 294,
+          "wrongTaam": 32
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.314,
+            "cases": 51
+          },
+          "1–2 st": {
+            "detected": 0.346,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 2",
+      "criterion": "worstWord",
+      "threshold": 1.67,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.015,
+        "falseAlarmOtherSinger": 0.194,
+        "detectedWrongTaam": 0.375,
+        "detectedWrongTaamDisjunctive": 0.375,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.7,
+          "otherSinger": 1.1,
+          "wrongTaam": 1.56
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 294,
+          "wrongTaam": 32
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.392,
+            "cases": 51
+          },
+          "1–2 st": {
+            "detected": 0.5,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    },
+    {
+      "method": "pitch-DTW, local key, step penalty 2",
+      "criterion": "relWord",
+      "threshold": 1.08,
+      "heldOut": {
+        "falseAlarmSameMelody": 0.011,
+        "falseAlarmOtherSinger": 0.092,
+        "detectedWrongTaam": 0.344,
+        "detectedWrongTaamDisjunctive": 0.344,
+        "detectedWrongTaamConjunctiveOnly": null,
+        "medianDev": {
+          "sameMelody": 0.07,
+          "otherSinger": 0.15,
+          "wrongTaam": 0.9
+        },
+        "cases": {
+          "sameMelody": 262,
+          "otherSinger": 294,
+          "wrongTaam": 32
+        },
+        "detectedByTrueDifference": {
+          "< 1 st": {
+            "detected": 0.294,
+            "cases": 51
+          },
+          "1–2 st": {
+            "detected": 0.269,
+            "cases": 26
+          },
+          "≥ 2 st": {
+            "detected": 1,
+            "cases": 1
+          }
+        }
+      }
+    }
+  ],
+  "lesson": [
+    {
+      "method": "frames (v1)",
+      "toleranceFrom": "reference singer",
+      "tolerance": 1.03,
+      "heldOutPass": {
+        "referenceSinger": 0.853,
+        "otherSinger": 0.345,
+        "wrongTaam": 0.529
+      },
+      "cases": {
+        "referenceSinger": 34,
+        "otherSinger": 29,
+        "wrongTaam": 34
+      }
+    },
+    {
+      "method": "frames (v1)",
+      "toleranceFrom": "other singer",
+      "tolerance": 1.7,
+      "heldOutPass": {
+        "referenceSinger": 1,
+        "otherSinger": 0.862,
+        "wrongTaam": 0.824
+      },
+      "cases": {
+        "referenceSinger": 34,
+        "otherSinger": 29,
+        "wrongTaam": 34
+      }
+    },
+    {
+      "method": "pitch-DTW",
+      "toleranceFrom": "reference singer",
+      "tolerance": 0.8,
+      "heldOutPass": {
+        "referenceSinger": 0.931,
+        "otherSinger": 0.5,
+        "wrongTaam": 0.375
+      },
+      "cases": {
+        "referenceSinger": 29,
+        "otherSinger": 20,
+        "wrongTaam": 24
+      }
+    },
+    {
+      "method": "pitch-DTW",
+      "toleranceFrom": "other singer",
+      "tolerance": 1.09,
+      "heldOutPass": {
+        "referenceSinger": 0.966,
+        "otherSinger": 0.85,
+        "wrongTaam": 0.708
+      },
+      "cases": {
+        "referenceSinger": 29,
+        "otherSinger": 20,
+        "wrongTaam": 24
+      }
+    }
+  ]
+}

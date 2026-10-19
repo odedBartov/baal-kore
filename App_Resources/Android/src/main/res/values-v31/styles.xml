@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 12+ system splash screen: the scroll on navy, the app name underneath (scripts/build-art.mjs). -->
+    <style name="LaunchScreenTheme" parent="LaunchScreenThemeBase">
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/splash_brand</item>
+    </style>
+</resources>

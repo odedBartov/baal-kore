@@ -1,0 +1,315 @@
+{
+ "createdAt": "2026-10-19T20:33:57.130Z",
+ "note": "Real chant. Thresholds from correct readings of even verses (Israeli reader); false alarms on odd verses; wrong cases never set a threshold (see scripts/validate-niqqud.ts).",
+ "checks": {
+  "vowel": {
+   "cases": {
+    "correct": 3866,
+    "wrong": 4096
+   },
+   "atFalseAlarm": {
+    "0.5%": {
+     "threshold": -1.97,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.012,
+      "asael-ashkenazi": 0.19,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.01,
+      "nahum": 0.116,
+      "nahum (ashkenazi pronunciation)": 0.01
+     },
+     "detected": 0.919
+    },
+    "1%": {
+     "threshold": -1.3,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.018,
+      "asael-ashkenazi": 0.212,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.018,
+      "nahum": 0.158,
+      "nahum (ashkenazi pronunciation)": 0.02
+     },
+     "detected": 0.941
+    },
+    "2%": {
+     "threshold": -0.96,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.023,
+      "asael-ashkenazi": 0.229,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.028,
+      "nahum": 0.184,
+      "nahum (ashkenazi pronunciation)": 0.025
+     },
+     "detected": 0.952
+    }
+   }
+  },
+  "dagesh": {
+   "cases": {
+    "correct": 526,
+    "wrong": 555
+   },
+   "atFalseAlarm": {
+    "0.5%": {
+     "threshold": -0.09,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.014,
+      "asael-ashkenazi": 0.04,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.028,
+      "nahum": 0.137,
+      "nahum (ashkenazi pronunciation)": 0.089
+     },
+     "detected": 0.989
+    },
+    "1%": {
+     "threshold": 0.24,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.017,
+      "asael-ashkenazi": 0.056,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.038,
+      "nahum": 0.16,
+      "nahum (ashkenazi pronunciation)": 0.103
+     },
+     "detected": 0.991
+    },
+    "2%": {
+     "threshold": 0.49,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.021,
+      "asael-ashkenazi": 0.066,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.049,
+      "nahum": 0.215,
+      "nahum (ashkenazi pronunciation)": 0.143
+     },
+     "detected": 0.995
+    }
+   }
+  },
+  "shin": {
+   "cases": {
+    "correct": 408,
+    "wrong": 382
+   },
+   "atFalseAlarm": {
+    "0.5%": {
+     "threshold": 0.15,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0,
+      "asael-ashkenazi": 0,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0,
+      "nahum": 0.008,
+      "nahum (ashkenazi pronunciation)": 0.008
+     },
+     "detected": 0.997
+    },
+    "1%": {
+     "threshold": 0.41,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0,
+      "asael-ashkenazi": 0.011,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.011,
+      "nahum": 0.016,
+      "nahum (ashkenazi pronunciation)": 0.016
+     },
+     "detected": 0.997
+    },
+    "2%": {
+     "threshold": 0.58,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0,
+      "asael-ashkenazi": 0.021,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.021,
+      "nahum": 0.024,
+      "nahum (ashkenazi pronunciation)": 0.024
+     },
+     "detected": 1
+    }
+   }
+  },
+  "sheva-na": {
+   "cases": {
+    "correct": 196,
+    "wrong": 158
+   },
+   "atFalseAlarm": {
+    "0.5%": {
+     "threshold": -1.66,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0,
+      "asael-ashkenazi": 0.069,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.086,
+      "nahum": 0.104,
+      "nahum (ashkenazi pronunciation)": 0.104
+     },
+     "detected": 0.886
+    },
+    "1%": {
+     "threshold": -1.66,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0,
+      "asael-ashkenazi": 0.069,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.086,
+      "nahum": 0.104,
+      "nahum (ashkenazi pronunciation)": 0.104
+     },
+     "detected": 0.886
+    },
+    "2%": {
+     "threshold": 0.25,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.024,
+      "asael-ashkenazi": 0.103,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0.121,
+      "nahum": 0.134,
+      "nahum (ashkenazi pronunciation)": 0.134
+     },
+     "detected": 1
+    }
+   }
+  },
+  "sheva-nach": {
+   "cases": {
+    "correct": 140,
+    "wrong": 181
+   },
+   "atFalseAlarm": {
+    "0.5%": {
+     "threshold": 0.62,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.011,
+      "asael-ashkenazi": 0,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0,
+      "nahum": 0.014,
+      "nahum (ashkenazi pronunciation)": 0.014
+     },
+     "detected": 0.983
+    },
+    "1%": {
+     "threshold": 0.62,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.011,
+      "asael-ashkenazi": 0,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0,
+      "nahum": 0.014,
+      "nahum (ashkenazi pronunciation)": 0.014
+     },
+     "detected": 0.983
+    },
+    "2%": {
+     "threshold": 0.63,
+     "falseAlarm": {
+      "tts (spoken)": null,
+      "asael-israeli": 0.011,
+      "asael-ashkenazi": 0,
+      "asael-ashkenazi (ashkenazi pronunciation)": 0,
+      "nahum": 0.014,
+      "nahum (ashkenazi pronunciation)": 0.014
+     },
+     "detected": 0.983
+    }
+   }
+  }
+ },
+ "shipped": {
+  "vowel": {
+   "threshold": -2.5,
+   "falseAlarm": {
+    "tts (spoken)": 0.061,
+    "asael-israeli": 0.003,
+    "asael-ashkenazi": 0.17,
+    "asael-ashkenazi (ashkenazi pronunciation)": 0.005,
+    "nahum": 0.078,
+    "nahum (ashkenazi pronunciation)": 0.005
+   },
+   "detected": 0.887,
+   "detectedAndNamed": 0.856
+  },
+  "dagesh": {
+   "threshold": -1.5,
+   "falseAlarm": {
+    "tts (spoken)": 0.031,
+    "asael-israeli": 0.003,
+    "asael-ashkenazi": 0,
+    "asael-ashkenazi (ashkenazi pronunciation)": 0,
+    "nahum": 0.027,
+    "nahum (ashkenazi pronunciation)": 0.017
+   },
+   "detected": 0.919,
+   "detectedAndNamed": 0.883
+  },
+  "shin": {
+   "threshold": -1,
+   "falseAlarm": {
+    "tts (spoken)": 0,
+    "asael-israeli": 0,
+    "asael-ashkenazi": 0,
+    "asael-ashkenazi (ashkenazi pronunciation)": 0,
+    "nahum": 0,
+    "nahum (ashkenazi pronunciation)": 0
+   },
+   "detected": 0.953,
+   "detectedAndNamed": 0.924
+  },
+  "sheva-na": {
+   "threshold": -1.5,
+   "falseAlarm": {
+    "tts (spoken)": 0.326,
+    "asael-israeli": 0,
+    "asael-ashkenazi": 0.069,
+    "asael-ashkenazi (ashkenazi pronunciation)": 0.086,
+    "nahum": 0.104,
+    "nahum (ashkenazi pronunciation)": 0.104
+   },
+   "detected": 0.886,
+   "detectedAndNamed": 0.823
+  },
+  "sheva-nach": {
+   "threshold": -1,
+   "falseAlarm": {
+    "tts (spoken)": 0.028,
+    "asael-israeli": 0,
+    "asael-ashkenazi": 0,
+    "asael-ashkenazi (ashkenazi pronunciation)": 0,
+    "nahum": 0,
+    "nahum (ashkenazi pronunciation)": 0
+   },
+   "detected": 0.934,
+   "detectedAndNamed": 0.917
+  }
+ },
+ "vowelSubstitutions": {
+  "A→E": 0.763,
+  "A→I": 0.835,
+  "A→O": 0.919,
+  "A→U": 0.963,
+  "E→A": 0.86,
+  "E→I": 0.772,
+  "E→O": 0.961,
+  "E→U": 0.969,
+  "I→A": 0.924,
+  "I→E": 0.663,
+  "I→O": 0.965,
+  "I→U": 0.942,
+  "O→A": 0.968,
+  "O→E": 0.962,
+  "O→I": 0.943,
+  "O→U": 0.873,
+  "U→A": 0.972,
+  "U→E": 0.944,
+  "U→I": 0.972,
+  "U→O": 0.75
+ }
+}

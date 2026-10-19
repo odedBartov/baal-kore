@@ -1,0 +1,7 @@
+<!-- Launch screen before Android 12 (and behind the system splash on 12+): navy, the scroll and the name. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android" android:gravity="fill">
+    <item android:drawable="@color/splash_background"/>
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/logo"/>
+    </item>
+</layer-list>

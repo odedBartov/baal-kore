@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hebrew-first. main.ts mirrors the native window: the toolbar and FlexboxLayout rows follow it (plain `row` flows
+   right-to-left); NativeScript's GridLayout does not, so its columns are written in visual order (first item in the
+   right-most column). Labels are right-aligned. */
+Page { background-color: #fbf8f1; }
+ActionBar { background-color: #1f3b5a; color: #ffffff; }
+.ab-action { color: #ffffff; font-size: 16; padding: 8 14; }
+Label { text-align: right; color: #2b2b2b; }
+
+.page { padding: 16; }
+.h1 { font-size: 34; font-weight: bold; text-align: center; color: #1f3b5a; margin-top: 8; }
+.sub { font-size: 17; text-align: center; color: #5a5a5a; margin-bottom: 8; }
+.section { font-size: 19; font-weight: bold; color: #1f3b5a; margin-top: 18; margin-bottom: 4; }
+.body { font-size: 16; color: #2b2b2b; }
+.meta { font-size: 14; color: #5c5c5c; margin: 2 0; }
+.center { text-align: center; }
+.note { font-size: 14; color: #6b6b6b; margin-top: 12; }
+.error { font-size: 15; color: #b3261e; margin: 8 0; }
+.warning { font-size: 15; color: #8a5300; margin: 4 0; }
+.legend { font-size: 13; color: #6b6b6b; margin: 4 12; }
+
+/* Buttons: big touch targets */
+.btn { font-size: 17; min-height: 52; margin: 6 0; border-radius: 12; background-color: #e9e2d2; color: #2b2b2b; text-transform: none; }
+.btn-primary { background-color: #1f5d99; color: #ffffff; font-weight: bold; }
+.btn-record { background-color: #b3261e; color: #ffffff; font-weight: bold; font-size: 19; min-height: 60; }
+.btn-danger { background-color: #f3d6d3; color: #8c1d18; }
+.btn-primary:disabled, .btn-record:disabled, .btn:disabled { opacity: 0.45; }
+.btn-small { font-size: 18; min-width: 52; min-height: 48; margin: 2 4; border-radius: 10; background-color: #e9e2d2; }
+.btn-link { font-size: 15; color: #1f5d99; background-color: transparent; text-transform: none; }
+.buttons { margin-top: 4; }
+
+/* Rabbi */
+.rabbi { margin: 6 0; }
+.bubble { background-color: #ffffff; border-radius: 16; border-width: 1; border-color: #d9cfb8; padding: 12; margin-right: 6; }
+.bubble-text { font-size: 17; color: #2b2b2b; line-height: 4; }
+
+/* Verse text */
+.verse-box { margin: 10 0; padding: 18 6 6 6; background-color: #fffdf7; border-radius: 12; border-width: 1; border-color: #e3d9c2; }
+.vw { margin: 2 5; padding: 0 2; border-radius: 6; }
+.vw.joined { margin-left: 0; } /* maqaf: no gap before the next (left) word */
+.vw-text { font-family: "Ezra SIL", EzraSIL; color: #1d1d1d; text-align: center; }
+.vw.active { background-color: #ffe9a8; }
+.vw.dim .vw-text { color: #b5ad9c; }
+.vw-mark { font-size: 15; text-align: center; font-weight: bold; }
+.vw-mark.ok { color: #2e7d32; }
+.vw-mark.doubtful { color: #8a5300; }
+.vw-mark.problem { color: #b3261e; }
+
+/* Cards, chips, badges, tags */
+.card { background-color: #ffffff; border-radius: 14; border-width: 1; border-color: #e3d9c2; padding: 14; margin: 6 0; }
+.card-title { font-size: 19; font-weight: bold; color: #1f3b5a; }
+.portion-name { font-size: 22; font-weight: bold; color: #1f3b5a; }
+.portion.disabled { opacity: 0.5; }
+.chevron { font-size: 24; color: #9a8f78; vertical-align: middle; }
+.chapters { padding: 6; }
+.chip { font-size: 15; min-height: 44; margin: 3; border-radius: 22; background-color: #e9e2d2; text-transform: none; }
+.chip-on { background-color: #1f5d99; color: #ffffff; }
+.badges { margin: 2 0; }
+.badge { font-size: 13; padding: 4 10; margin: 2 4; border-radius: 12; background-color: #e3efe3; color: #2e5e30; }
+.badge-warn { background-color: #fbecd0; color: #7a4a00; }
+.tag { font-size: 12; color: #5c5c5c; }
+.tag-validated { color: #2e7d32; }
+.tag-experimental { color: #8a5300; }
+.tag-unavailable { color: #8c8c8c; }
+
+/* Verse list */
+.verse-row { padding: 12 14; }
+.verse-row.locked { opacity: 0.45; }
+.verse-num { font-size: 20; font-weight: bold; color: #1f5d99; width: 44; text-align: center; vertical-align: middle; }
+.verse-preview { font-family: "Ezra SIL", EzraSIL; font-size: 21; }
+.verse-status { font-size: 20; width: 36; text-align: center; vertical-align: middle; }
+
+/* Lessons */
+.taam-card { padding: 12; }
+.taam-symbol { font-family: "Ezra SIL", EzraSIL; font-size: 38; min-width: 90; text-align: center; color: #1f3b5a; vertical-align: middle; margin-left: 8; }
+
+/* Practice / results */
+.meter { background-color: #e6e0d2; border-radius: 6; margin: 4 0 8 0; }
+.meter-fill { background-color: #2e7d32; border-radius: 6; }
+.status { padding: 14; border-radius: 14; margin-bottom: 6; }
+.status-passed { background-color: #e3f1e4; }
+.status-failed { background-color: #fbe3e1; }
+.status-inconclusive { background-color: #fbf0d9; }
+.status-title { font-size: 21; font-weight: bold; }
+.status-score { font-size: 28; font-weight: bold; color: #1f3b5a; }
+.cat-row { padding: 8 0; border-bottom-width: 1; border-color: #ece4d2; }
+.cat-name { font-size: 16; font-weight: bold; }
+.cat-score { font-size: 20; font-weight: bold; text-align: left; }
+.error-item { padding: 8 10; margin: 4 0; background-color: #ffffff; border-radius: 10; border-width: 1; border-color: #eadfca; }
+.setting { margin: 4 0; }
+.setting-value { font-size: 17; font-weight: bold; vertical-align: middle; text-align: center; min-width: 54; }
+.credits { font-size: 13; color: #4a4a4a; }
+
+/* Charts */
+.chart-box { margin-top: 12; }
+.chart-title { font-size: 14; font-weight: bold; margin-bottom: 4; color: #3a3a3a; }
+.chart { background-color: #ffffff; border-width: 1; border-color: #e3d9c2; border-radius: 10; }
+.chart-grid { background-color: #efe9dc; }
+.chart-playhead { background-color: #b3261e; }
+.chart-word { font-family: "Ezra SIL", EzraSIL; color: #555555; text-align: center; }
+.chart-word-bad { color: #b3261e; font-weight: bold; }
+.chart-legend { margin-bottom: 4; }
+.chart-legend-text { font-size: 12; color: #555555; margin: 0 4 0 12; vertical-align: middle; }
+.chart-legend-swatch { vertical-align: middle; }

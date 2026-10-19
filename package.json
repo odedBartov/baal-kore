@@ -1,0 +1,49 @@
+{
+  "name": "torah-tutor",
+  "main": "./src/main.ts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "bench": "tsx test/bench.ts",
+    "fetch-test-audio": "node scripts/fetch-test-audio.mjs",
+    "fetch-model": "node --use-system-ca --import tsx scripts/fetch-model.ts",
+    "import-torah": "node --use-system-ca --import tsx scripts/import-torah.ts",
+    "align-reference": "node --max-old-space-size=8192 --import tsx scripts/align-reference.ts",
+    "validate-analyzers": "node --max-old-space-size=8192 --import tsx scripts/validate-analyzers.ts",
+    "make-validation-files": "node --import tsx scripts/make-validation-files.ts",
+    "build-art": "node scripts/build-art.mjs",
+    "validate-melody": "node --max-old-space-size=8192 --import tsx scripts/validate-melody.ts",
+    "validate-niqqud": "node --max-old-space-size=8192 --import tsx scripts/validate-niqqud.ts"
+  },
+  "dependencies": {
+    "@angular/animations": "~22.0.0",
+    "@angular/common": "~22.0.0",
+    "@angular/compiler": "~22.0.0",
+    "@angular/core": "~22.0.0",
+    "@angular/forms": "~22.0.0",
+    "@angular/platform-browser": "~22.0.0",
+    "@angular/platform-browser-dynamic": "~22.0.0",
+    "@angular/router": "~22.0.0",
+    "@nativescript/angular": "~22.0.0",
+    "@nativescript/core": "~9.1.0",
+    "rxjs": "~7.8.0",
+    "zone.js": "~0.16.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "~22.0.0",
+    "@angular/compiler-cli": "~22.0.0",
+    "@nativescript/android": "9.0.5",
+    "@nativescript/tailwind": "^2.1.0",
+    "@nativescript/types": "~9.0.0",
+    "@nativescript/webpack": "~5.0.25",
+    "@ngtools/webpack": "~22.0.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "@wasm-audio-decoders/ogg-vorbis": "^0.1.20",
+    "havarotjs": "^0.25.5",
+    "onnxruntime-node": "^1.30.0",
+    "tailwindcss": "~3.4.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.0"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "createdAt": "2026-10-12T07:37:44.642Z",
+  "model": "omnilingual-asr-ctc-300m-int8@2025-11-12",
+  "readers": {
+    "asael-israeli": {
+      "verses": 146,
+      "good": 140,
+      "meanCer": 0.054
+    },
+    "nahum": {
+      "verses": 146,
+      "good": 106,
+      "meanCer": 0.153
+    },
+    "asael-ashkenazi": {
+      "verses": 146,
+      "good": 91,
+      "meanCer": 0.191
+    }
+  },
+  "crossReaderWordStartAgreement": {
+    "words": 1356,
+    "medianMs": 20,
+    "within100ms": 0.856,
+    "within250ms": 0.948
+  }
+}

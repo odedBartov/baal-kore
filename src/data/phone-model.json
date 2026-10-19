@@ -1,0 +1,7 @@
+{
+ "id": "zipa-small-crctc-300k-int8",
+ "asset": "models/zipa-small.int8.onnx",
+ "license": "CC BY 4.0",
+ "source": "https://huggingface.co/anyspeech/zipa-small-crctc-300k",
+ "tokens": "<blk> 0\n<sos/eos> 1\n<unk> 2\n▁ 3\na 4\nb 5\nc 6\nd 7\ne 8\nf 9\ng 10\nh 11\ni 12\nj 13\nk 14\nl 15\nm 16\nn 17\no 18\np 19\nq 20\nr 21\ns 22\nt 23\nu 24\nv 25\nw 26\nx 27\ny 28\nz 29\næ 30\nç 31\nð 32\nø 33\nħ 34\nŋ 35\nœ 36\nǀ 37\nǁ 38\nǂ 39\nǃ 40\nɐ 41\nɑ 42\nɒ 43\nɓ 44\nɔ 45\nɕ 46\nɖ 47\nɗ 48\nɘ 49\nə 50\nɛ 51\nɜ 52\nɞ 53\nɟ 54\nɠ 55\nɢ 56\nɣ 57\nɤ 58\nɥ 59\nɦ 60\nɧ 61\nɨ 62\nɪ 63\nɬ 64\nɭ 65\nɮ 66\nɯ 67\nɰ 68\nɱ 69\nɲ 70\nɳ 71\nɴ 72\nɵ 73\nɶ 74\nɸ 75\nɹ 76\nɺ 77\nɻ 78\nɽ 79\nɾ 80\nʀ 81\nʁ 82\nʂ 83\nʃ 84\nʄ 85\nʈ 86\nʉ 87\nʊ 88\nʋ 89\nʌ 90\nʍ 91\nʎ 92\nʏ 93\nʐ 94\nʑ 95\nʒ 96\nʔ 97\nʕ 98\nʘ 99\nʙ 100\nʛ 101\nʜ 102\nʝ 103\nʟ 104\nʡ 105\nʢ 106\nʰ 107\nʲ 108\nʷ 109\nʼ 110\nː 111\n˞ 112\nˠ 113\nˤ 114\ñ 115\n̚ 116\n̥ 117\n̩ 118\n̪ 119\n̴ 120\n̺ 121\nβ 122\nθ 123\nχ 124\nᶑ 125\nⱱ 126"
+}

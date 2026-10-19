@@ -1,0 +1,31 @@
+// Native dependencies for the Java helpers in src/main/java (see docs/architecture.md).
+dependencies {
+  // On-device CTC model for word checks (MIT). The model itself is an optional asset: npm run fetch-model.
+  implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.31.0'
+}
+
+android {
+  compileSdkVersion 36
+  buildToolsVersion "36"
+
+  defaultConfig {
+    minSdkVersion 24
+    targetSdkVersion 36
+
+    // Version Information
+    versionCode 2
+    versionName "0.5.0"
+
+    generatedDensities = []
+
+    // ponytail: 64-bit ARM phones + x86_64 emulator only; add 'armeabi-v7a' if old 32-bit phones matter.
+    // abiFilters is additive and NativeScript pre-fills all four ABIs, so replace the set.
+    ndk { abiFilters.clear(); abiFilters 'arm64-v8a', 'x86_64' }
+  }
+
+  aaptOptions {
+    additionalParameters "--no-version-vectors"
+    // Stored, not deflated: the model is copied out by file descriptor, Ogg is already compressed.
+    noCompress 'onnx', 'oga', 'ogg'
+  }
+}

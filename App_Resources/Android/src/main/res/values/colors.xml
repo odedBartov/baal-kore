@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <!-- The app's navy (ActionBar in app.css) -->
+    <color name="ns_primary">#1F3B5A</color>
+    <!-- Status bar -->
+    <color name="ns_primaryDark">#132840</color>
+    <!-- UI controls (switches, edit text) -->
+    <color name="ns_accent">#1F5D99</color>
+    <color name="splash_background">#1F3B5A</color>
+</resources>

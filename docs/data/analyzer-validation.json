@@ -1,0 +1,123 @@
+{
+  "createdAt": "2026-10-12T08:25:51.002Z",
+  "thresholds": {
+    "wordOk": 0.65,
+    "wordProblem": 0.5,
+    "extraLetters": 3,
+    "repeatSimilarity": 0.7,
+    "pauseInsidePhraseMs": 700
+  },
+  "note": "Students are a second adult reader (Nahum) and edits of his real audio. Not a labelled student corpus.",
+  "correctReadings": {
+    "verses": 51,
+    "words": 684,
+    "falseWordErrorRate": 0.0219,
+    "falseWordErrorsShownToStudent": 11,
+    "falseExtraSpeechPerVerse": 0,
+    "falseMelodyErrorRatePerPhrase": 0.1072,
+    "falsePausePerVerse": 0,
+    "medianWordsScore": 89,
+    "medianCantillationScore": 77
+  },
+  "splicedErrors": {
+    "omitted word": {
+      "cases": 25,
+      "detectedAtWord": 0.8,
+      "detectedNearby": 0.8,
+      "otherWordFalseAlarmsPerCase": 0.4
+    },
+    "repeated word": {
+      "cases": 25,
+      "detectedAtWord": 0.24,
+      "detectedNearby": 0.44,
+      "otherWordFalseAlarmsPerCase": 0.44
+    },
+    "substituted word": {
+      "cases": 25,
+      "detectedAtWord": 0.64,
+      "detectedNearby": 0.72,
+      "otherWordFalseAlarmsPerCase": 0.16
+    },
+    "melody +4 st on one phrase": {
+      "cases": 25,
+      "detectedAtWord": 0.2,
+      "detectedNearby": 0.6,
+      "otherWordFalseAlarmsPerCase": 1.28
+    }
+  },
+  "thresholdSweeps": {
+    "words": [
+      {
+        "threshold": 0.2,
+        "falseAlarmOnCorrectWords": 0.009,
+        "omittedDetected": 0.44,
+        "substitutedDetected": 0.2
+      },
+      {
+        "threshold": 0.25,
+        "falseAlarmOnCorrectWords": 0.01,
+        "omittedDetected": 0.44,
+        "substitutedDetected": 0.32
+      },
+      {
+        "threshold": 0.3,
+        "falseAlarmOnCorrectWords": 0.01,
+        "omittedDetected": 0.52,
+        "substitutedDetected": 0.32
+      },
+      {
+        "threshold": 0.35,
+        "falseAlarmOnCorrectWords": 0.015,
+        "omittedDetected": 0.6,
+        "substitutedDetected": 0.36
+      },
+      {
+        "threshold": 0.4,
+        "falseAlarmOnCorrectWords": 0.015,
+        "omittedDetected": 0.68,
+        "substitutedDetected": 0.44
+      },
+      {
+        "threshold": 0.45,
+        "falseAlarmOnCorrectWords": 0.016,
+        "omittedDetected": 0.8,
+        "substitutedDetected": 0.6
+      },
+      {
+        "threshold": 0.5,
+        "falseAlarmOnCorrectWords": 0.022,
+        "omittedDetected": 0.8,
+        "substitutedDetected": 0.64
+      }
+    ],
+    "melody": [
+      {
+        "threshold": 1.5,
+        "falseAlarmOnCorrectPhrases": 0.019,
+        "shiftedDetected": 0.364
+      },
+      {
+        "threshold": 2,
+        "falseAlarmOnCorrectPhrases": 0.003,
+        "shiftedDetected": 0
+      },
+      {
+        "threshold": 2.5,
+        "falseAlarmOnCorrectPhrases": 0,
+        "shiftedDetected": 0
+      },
+      {
+        "threshold": 3,
+        "falseAlarmOnCorrectPhrases": 0,
+        "shiftedDetected": 0
+      }
+    ]
+  },
+  "lessonCheck": {
+    "samePhrasePassRate": 0.538,
+    "differentPhrasePassRate": 0.269,
+    "medianDeviationSame": 0.86,
+    "medianDeviationDifferent": 0.93,
+    "cases": 26
+  }
+}

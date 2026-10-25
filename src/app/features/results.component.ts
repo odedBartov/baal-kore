@@ -1,15 +1,18 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, OnDestroy, computed, inject, signal } from '@angular/core';
+import { goBack } from '../core/navigation';
 import { ActivatedRoute } from '@angular/router';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Screen } from '@nativescript/core';
-import { AudioService } from '../core/audio.service';
-import { ContentService } from '../core/content.service';
-import { StoreService } from '../core/store.service';
-import { Playback, wordAt } from '../core/playback';
 import { THRESHOLDS } from '../analysis/evaluate';
 import { CATEGORY_NAME_HE, type CategoryScore, type DetectedError } from '../analysis/types';
+import { AudioService } from '../core/audio.service';
+import { ContentService, hebrewNumber } from '../core/content.service';
+import { computeParashaSummary, gradeRankForScore } from '../core/gamification';
+import { Playback, wordAt } from '../core/playback';
+import { StoreService } from '../core/store.service';
 import { rabbiSays } from '../teaching/rabbi';
 import { stripAccents } from '../torah/hebrew';
+import { GamificationBarComponent } from '../ui/gamification-bar.component';
 import { RabbiComponent } from '../ui/rabbi.component';
 import { VerseTextComponent, type WordMark } from '../ui/verse-text.component';
 import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-chart.component';
@@ -18,24 +21,70 @@ const MENTION = 0.6; // word-level marks and named mistakes need at least this c
 const SEVERITY_HE = { critical: 'חמור', major: 'משמעותי', moderate: 'בינוני', minor: 'קל' };
 const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', unavailable: 'לא זמין' };
 
-/** Screen G — results: status, categories with their maturity, word-level marks, melody comparison. */
+/** Screen G — results: Duolingo-style effort level celebration, XP/Coins/Streak rewards, Aliyah & Parasha averages, and melody comparison. */
 @Component({
   selector: 'results',
-  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent],
+  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent, GamificationBarComponent],
   schemas: [NO_ERRORS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ActionBar title="תוצאות"></ActionBar>
+    <ActionBar title="תוצאות ותגמולים">
+      <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
+      <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="הגדרות" class="ab-action" (tap)="nav.navigate(['/settings'])"></Label>
+      </ActionItem>
+    </ActionBar>
     @if (entry; as e) {
       <ScrollView>
         <StackLayout class="page">
-          <StackLayout [class]="'status status-' + e.evaluation.status">
-            <Label class="status-title" [text]="statusTitle" textWrap="true"></Label>
-            <Label class="status-score" [text]="e.evaluation.overallScore !== null ? e.evaluation.overallScore + ' / 100' : 'אין ציון סופי'"></Label>
-            <Label class="meta" textWrap="true" [text]="statusDetail"></Label>
+          <gamification-bar [compact]="true"></gamification-bar>
+
+          <!-- Status & Effort Level Hero Card -->
+          <StackLayout [class]="'status status-' + ev?.status">
+            <GridLayout columns="auto, *">
+              <StackLayout col="0" class="grade-pill-box" verticalAlignment="center">
+                <Label class="status-score" [text]="ev?.overallScore !== null ? ev?.overallScore + '' : '—'"></Label>
+                <Label class="grade-pill-lbl" [text]="'סף: ' + ev?.passingThreshold"></Label>
+              </StackLayout>
+              <StackLayout col="1" verticalAlignment="center" marginRight="10">
+                <Label class="status-title" [text]="statusTitle" textWrap="true"></Label>
+                <Label class="effort-rank-title" [text]="effortRank().icon + ' רמת הביצוע: ' + effortRank().titleHe + ' ' + effortStars()" textWrap="true"></Label>
+                <Label class="meta" textWrap="true" [text]="effortRank().subtitleHe"></Label>
+              </StackLayout>
+            </GridLayout>
           </StackLayout>
+
+          <!-- Gamified Rewards Banner (XP, Coins, Streak, Level Up, Aliyah Crown) -->
+          @if (e.reward; as rw) {
+            <StackLayout class="reward-card">
+              @if (rw.leveledUp) {
+                <Label class="level-up-banner" textWrap="true" [text]="'🎉 עליתם לרמה ' + rw.newLevel + ' (' + rw.newRankTitleHe + ')! כל הכבוד!'"></Label>
+              }
+              @if (rw.aliyahCrownEarned) {
+                <Label class="level-up-banner" textWrap="true" text="👑 השגתם 3 פסוקים ברצף וזכיתם בכתר העלייה (+50 🪙 ו־+100 XP)!"></Label>
+              }
+              <FlexboxLayout flexDirection="row" flexWrap="wrap" justifyContent="space-around" alignItems="center">
+                <Label class="reward-pill reward-pill-xp" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
+                <Label class="reward-pill reward-pill-coins" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
+                <Label class="reward-pill reward-pill-streak" [text]="'🔥 רצף ' + rw.streakDays + ' ימים (+' + rw.streakBonusCoins + '🪙)'"></Label>
+              </FlexboxLayout>
+            </StackLayout>
+          }
+
+          <!-- Aliyah & Parasha Live Averages -->
+          <GridLayout columns="*, *" class="averages-strip">
+            <StackLayout col="1" class="avg-mini-card">
+              <Label class="avg-mini-lbl" [text]="aliyahSummary().nameHe"></Label>
+              <Label class="avg-mini-val" [text]="'ממוצע: ' + (aliyahSummary().averageScore ?? '—') + ' · ' + aliyahSummary().levelIcon + ' ' + aliyahSummary().levelTitleHe"></Label>
+            </StackLayout>
+            <StackLayout col="0" class="avg-mini-card">
+              <Label class="avg-mini-lbl" text="כל פרשת בראשית"></Label>
+              <Label class="avg-mini-val" [text]="'ממוצע: ' + (parashaSummary().averageScore ?? '—') + ' (' + parashaSummary().doneVerses + '/' + parashaSummary().totalVerses + ')'"></Label>
+            </StackLayout>
+          </GridLayout>
+
           <rabbi [line]="line"></rabbi>
-          @for (q of e.evaluation.qualityIssues; track $index) {
+          @for (q of ev?.qualityIssues ?? []; track $index) {
             <Label class="warning" textWrap="true" [text]="'⚠ ' + q"></Label>
           }
 
@@ -43,8 +92,8 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
           <verse-text [verse]="verse" [marks]="marks" [activeWord]="activeWord()"></verse-text>
           <Label class="legend" textWrap="true" text="✓ נשמע טוב · ? לא בטוח · ✗ כדאי לבדוק (מסומן רק כשהבדיקה בטוחה מספיק)"></Label>
 
-          <Label class="section" text="פירוט"></Label>
-          @for (c of e.evaluation.categories; track c.category) {
+          <Label class="section" text="פירוט הציונים"></Label>
+          @for (c of ev?.categories ?? []; track c.category) {
             <GridLayout columns="auto, *" class="cat-row">
               <StackLayout col="1">
                 <Label class="cat-name" [text]="catName(c)"></Label>
@@ -89,14 +138,14 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
           @if (line.suggestLesson) {
             <Button class="btn" text="חזרה על השיעור" (tap)="nav.navigate(['/lesson', verse.id], { queryParams: { taam: line.suggestLesson } })"></Button>
           }
-          <Button class="btn btn-primary" text="קריאה חוזרת של כל הפסוק" (tap)="retry()"></Button>
+          <Button class="btn btn-primary" text="קריאה חוזרת לשיפור הציון והמטבעות" (tap)="retry()"></Button>
           @if (canMarkPracticed) {
             <Button class="btn" text="סימון הפסוק כמתורגל והמשך" (tap)="markPracticed()"></Button>
           }
           @if (canAdvance() && next) {
-            <Button class="btn" text="לפסוק הבא" (tap)="goNext()"></Button>
+            <Button class="btn btn-cta" text="▶ לפסוק הבא" (tap)="goNext()"></Button>
           }
-          <Button class="btn-link" text="לרשימת הפסוקים" (tap)="nav.navigate(['/portion', 'bereshit'], { clearHistory: false })"></Button>
+          <Button class="btn-link" text="לרשימת העליות והפסוקים" (tap)="nav.navigate(['/portion', 'bereshit'], { queryParams: { aliyah: verse.aliyah } })"></Button>
           <Label class="meta" textWrap="true" [text]="footer"></Label>
         </StackLayout>
       </ScrollView>
@@ -105,6 +154,10 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
 })
 export class ResultsComponent implements OnDestroy {
   nav = inject(RouterExtensions);
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
+  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -118,10 +171,22 @@ export class ResultsComponent implements OnDestroy {
   readonly ref = this.content.referenceFor(this.verse.id);
   readonly next = this.content.next(this.verse.id);
   readonly entry = this.store.evaluations.get(this.verse.id) ?? null;
-  private readonly ev = this.entry?.evaluation;
-  readonly line = this.ev
-    ? rabbiSays({ kind: 'evaluation', evaluation: this.ev, previous: this.entry!.previous, attempt: this.store.progress().attemptCounts[this.verse.id] ?? 1, mistakeCounts: this.store.progress().mistakeCounts })
-    : rabbiSays({ kind: 'verse-intro', where: '', attempts: 0, done: false });
+
+  get ev() {
+    this.store.settings();
+    return this.store.evaluations.get(this.verse.id)?.evaluation;
+  }
+
+  readonly parashaSummary = computed(() => computeParashaSummary(this.content.verses, this.store.progress(), hebrewNumber));
+  readonly aliyahSummary = computed(() => this.parashaSummary().aliyot.find((a) => a.aliyah === this.verse.aliyah) ?? this.parashaSummary().aliyot[0]);
+  readonly effortRank = computed(() => gradeRankForScore(this.ev?.overallScore ?? null));
+  readonly effortStars = computed(() => '⭐'.repeat(this.effortRank().stars));
+
+  get line() {
+    return this.ev
+      ? rabbiSays({ kind: 'evaluation', evaluation: this.ev, previous: this.entry!.previous, attempt: this.store.progress().attemptCounts[this.verse.id] ?? 1, mistakeCounts: this.store.progress().mistakeCounts })
+      : rabbiSays({ kind: 'verse-intro', where: '', attempts: 0, done: false });
+  }
 
   readonly shownErrors: DetectedError[] = this.ev?.errors.filter((e) => e.confidence >= MENTION) ?? [];
   readonly hiddenErrors = (this.ev?.errors.length ?? 0) - this.shownErrors.length;
@@ -137,24 +202,17 @@ export class ResultsComponent implements OnDestroy {
     const p = this.store.progress();
     return p.completedVerseIds.includes(this.verse.id) || p.practicedVerseIds.includes(this.verse.id);
   });
-  readonly statusTitle = !this.ev
-    ? ''
-    : this.ev.status === 'passed'
-      ? '✓ עבר בהצלחה'
-      : this.ev.status === 'failed'
-        ? '✗ עוד לא עבר'
-        : this.ev.inconclusiveReason === 'audio-quality'
-          ? 'לא ניתן היה לבדוק את ההקלטה'
-          : 'בדיקה חלקית';
-  readonly statusDetail = !this.ev
-    ? ''
-    : this.ev.status !== 'inconclusive'
-      ? `סף המעבר: ${this.ev.passingThreshold}`
-      : this.ev.inconclusiveReason === 'audio-quality'
-        ? 'כדאי לתקן את הבעיה שבהקלטה ולקרוא שוב.'
-        : this.ev.inconclusiveReason === 'reference-missing'
-          ? 'אין הקלטת קורא לפסוק, ולכן לא נבדקה המנגינה.'
-          : 'חלק מהבדיקות עדיין ניסיוניות או לא זמינות (למשל דיוקי ההגייה), ולכן האפליקציה לא נותנת ציון סופי ולא מאשרת מעבר.';
+  get statusTitle(): string {
+    return !this.ev
+      ? ''
+      : this.ev.status === 'passed'
+        ? '✓ עבר בהצלחה!'
+        : this.ev.status === 'failed'
+          ? '✗ עוד קצת תרגול ונעבור'
+          : this.ev.inconclusiveReason === 'audio-quality'
+            ? 'לא ניתן היה לבדוק את ההקלטה'
+            : 'בדיקה חלקית';
+  }
   readonly footer = this.ev
     ? `הקלטת הקורא: ${this.ev.referenceApproval === 'approved' ? 'מאושרת' : this.ev.referenceApproval === 'pending' ? 'ממתינה לאישור מומחה' : 'חסרה'}. הבדיקה נעשתה כולה במכשיר.`
     : '';

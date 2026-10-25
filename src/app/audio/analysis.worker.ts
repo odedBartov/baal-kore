@@ -6,7 +6,7 @@ import { decodeWav, encodeWav, resample } from './wav';
 import { detectPitch, medianVoicedHz, signalQuality, type PitchFrame, type SignalQuality } from './pitch';
 import { mfcc } from './mfcc';
 import { compareContours, dtw, type ContourComparison } from './align';
-import { evaluate, type EvalCharts, type EvalWord } from '../analysis/evaluate';
+import { evaluate, type EvalCharts, type EvalWord, type MelodyConfig } from '../analysis/evaluate';
 import { K } from '../analysis/ctc';
 import type { VerseEvaluation } from '../analysis/types';
 import { checkLesson, cutPhrase, type LessonCheck } from '../teaching/lesson-check';
@@ -49,6 +49,7 @@ export type WorkerRequest =
       referenceApproval: 'approved' | 'pending' | 'missing';
       passingThreshold: number;
       pronunciation: 'israeli' | 'ashkenazi';
+      melody?: Partial<MelodyConfig>;
     }
   | { type: 'lesson'; studentWav: string; referenceWav: string; maxDeviation: number; spokenWords: string[] } // referenceWav: the phrase clip
   | { type: 'compare'; paths: string[] }; // diagnostics screen

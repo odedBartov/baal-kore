@@ -55,24 +55,47 @@ test('letter comparison tolerates plene spelling and merged sounds, not a differ
 });
 
 test('silence is never scored: inconclusive with an actionable reason', () => {
-  const r = evaluate(base(new Float32Array(SR * 5), new Float32Array(SR * 5).map((_, i) => 0.3 * Math.sin((2 * Math.PI * 200 * i) / SR))));
-  assert.equal(r.evaluation.status, 'inconclusive');
-  assert.equal(r.evaluation.inconclusiveReason, 'audio-quality');
-  assert.equal(r.evaluation.overallScore, null);
-  assert.ok(r.evaluation.qualityIssues.length > 0);
-  assert.ok(r.evaluation.categories.every((c) => c.score === null));
+  const sil = evaluate(base(new Float32Array(SR * 5), new Float32Array(SR * 5).map((_, i) => 0.3 * Math.sin((2 * Math.PI * 200 * i) / SR))));
+  assert.equal(sil.evaluation.status, 'inconclusive');
+  assert.equal(sil.evaluation.inconclusiveReason, 'audio-quality');
+  assert.equal(sil.evaluation.overallScore, null);
+  assert.ok(sil.evaluation.qualityIssues.length > 0);
+  assert.ok(sil.evaluation.categories.every((c) => c.score === null));
+
+
+
+
+
 });
 
-test('without validated analyzers there is no overall score and no pass, whatever the audio', { skip: !hasCorpora && 'run npm run fetch-test-audio' }, async () => {
+test('overallScore is computed from available categories and passingThreshold controls pass/fail', () => {
+  const synth = new Float32Array(SR * 5).map((_, i) => 0.3 * Math.sin((2 * Math.PI * (200 + 20 * Math.sin(i / 800)) * i) / SR));
+  const pass = evaluate({ ...base(synth, synth), passingThreshold: 80 });
+  assert.equal(pass.evaluation.overallScore, 100);
+  assert.equal(pass.evaluation.status, 'passed');
+  const shifted = new Float32Array(SR * 5).map((_, i) => 0.3 * Math.sin((2 * Math.PI * (200 + (i < SR * 2 ? 40 : 20) * Math.sin(i / 800)) * i) / SR));
+  const high = evaluate({ ...base(shifted, synth), passingThreshold: 100 });
+  const low = evaluate({ ...base(shifted, synth), passingThreshold: 50 });
+  assert.ok(high.evaluation.overallScore !== null && high.evaluation.overallScore < 100);
+  assert.equal(high.evaluation.status, 'failed');
+  assert.equal(low.evaluation.status, 'passed');
+});
+
+test('available experimental analyzers still produce overallScore while missing models report unavailable', { skip: !hasCorpora && 'run npm run fetch-test-audio' }, async () => {
   const x = (await cantillation('0a-Kohen', 'Asael')).samples.subarray(0, SR * 8);
-  const r = evaluate(base(x, x));
-  assert.equal(r.evaluation.status, 'inconclusive');
-  assert.equal(r.evaluation.inconclusiveReason, 'unvalidated-analyzers');
-  assert.equal(r.evaluation.overallScore, null);
-  const words = r.evaluation.categories.find((c) => c.category === 'words')!;
+  const res = evaluate(base(x, x));
+
+  assert.equal(res.evaluation.inconclusiveReason, undefined);
+  assert.equal(res.evaluation.status, 'passed');
+  assert.equal(res.evaluation.overallScore, 100);
+
+
+
+  const words = res.evaluation.categories.find((c) => c.category === 'words')!;
+  const niqqud = res.evaluation.categories.find((c) => c.category === 'niqqud')!;
   assert.equal(words.maturity, 'unavailable'); // no CTC input given → reported unavailable, not zero
   assert.equal(words.score, null);
-  const niqqud = r.evaluation.categories.find((c) => c.category === 'niqqud')!;
+
   assert.equal(niqqud.score, null);
   assert.ok(!Object.values(ANALYZERS).some((a) => a.maturity === 'validated'), 'flip only after docs/validation.md');
 });

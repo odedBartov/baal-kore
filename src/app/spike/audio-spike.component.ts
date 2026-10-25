@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, OnDestroy, comput
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Device, File, Screen, knownFolders } from '@nativescript/core';
 import { AudioService } from '../core/audio.service';
+import { goBack } from '../core/navigation';
 import { ContentService } from '../core/content.service';
 import { StoreService } from '../core/store.service';
 import { Playback } from '../core/playback';
@@ -20,7 +21,9 @@ const ltr = (s: string | number) => `⁦${s}⁩`;
   schemas: [NO_ERRORS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ActionBar title="בדיקת שמע טכנית"></ActionBar>
+    <ActionBar title="בדיקת שמע טכנית">
+      <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
+    </ActionBar>
     <ScrollView>
       <StackLayout class="page">
         <Label class="body" textWrap="true" text="הקליטו את אותו פסוק פעמיים (א׳ ו־ב׳), אפשר בגובה או בקצב אחר. המסך מציג את קו המנגינה, מיישר בין ההקלטות ומודד זמני עיבוד במכשיר."></Label>
@@ -56,6 +59,10 @@ const ltr = (s: string | number) => `⁦${s}⁩`;
 })
 export class AudioSpikeComponent implements OnDestroy {
   nav = inject(RouterExtensions);
+
+  goBack(): void {
+    goBack(this.nav, ['/settings']);
+  }
   private audio = inject(AudioService);
   private content = inject(ContentService);
   private store = inject(StoreService);

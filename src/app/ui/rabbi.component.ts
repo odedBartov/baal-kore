@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, ElementRef, NO_ERRORS_SCHEMA, OnDestroy, ViewChild, computed, effect, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, NO_ERRORS_SCHEMA, OnDestroy, ViewChild, computed, effect, inject, input, signal } from '@angular/core';
 import { NativeScriptCommonModule } from '@nativescript/angular';
 import { CoreTypes, ImageSource, knownFolders, path, type View } from '@nativescript/core';
 import type { Expression, RabbiLine } from '../teaching/rabbi';
+import { StoreService } from '../core/store.service';
 
 const frames = new Map<string, ImageSource>();
 function frame(expr: Expression, kind: '' | '-talk' | '-blink'): ImageSource {
@@ -10,7 +11,7 @@ function frame(expr: Expression, kind: '' | '-talk' | '-blink'): ImageSource {
   return frames.get(key)!;
 }
 
-/** The 2D rabbi with a Hebrew speech bubble. Talks (mouth frames) while a new line appears, blinks, bobs gently. */
+/** The 2D rabbi with a Hebrew speech bubble, custom frame/crown from the Shop, blinking, talking, and gentle bobbing. */
 @Component({
   selector: 'rabbi',
   imports: [NativeScriptCommonModule],
@@ -18,7 +19,13 @@ function frame(expr: Expression, kind: '' | '-talk' | '-blink'): ImageSource {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <GridLayout columns="*, auto" class="rabbi">
-      <Image #img col="1" [src]="image()" [width]="size()" [height]="size()" stretch="aspectFit" verticalAlignment="bottom"></Image>
+      <StackLayout col="1" [class]="'rabbi-avatar-wrap rabbi-frame-' + store.progress().equippedFrame" verticalAlignment="bottom">
+        @if (store.progress().equippedFrame === 'crown') {
+          <Label class="rabbi-crown-top" text="👑"></Label>
+        }
+        <Image #img [src]="image()" [width]="size()" [height]="size()" stretch="aspectFit"></Image>
+        <Label class="rabbi-frame-badge" [text]="store.equippedFrameInfo().titleBadgeHe"></Label>
+      </StackLayout>
       @if (line()?.text) {
         <StackLayout #bubble col="0" class="bubble" verticalAlignment="center">
           <Label class="bubble-text" textWrap="true" [text]="line()!.text"></Label>
@@ -28,6 +35,7 @@ function frame(expr: Expression, kind: '' | '-talk' | '-blink'): ImageSource {
   `,
 })
 export class RabbiComponent implements OnDestroy {
+  readonly store = inject(StoreService);
   line = input<Pick<RabbiLine, 'expression' | 'text'> | null>(null);
   size = input(104);
   @ViewChild('img', { static: true }) img!: ElementRef<View>;

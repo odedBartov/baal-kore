@@ -1,9 +1,10 @@
-// Draws the anime-style rabbi (6 expressions × idle / blink / talk frames) and the Torah pointer (yad) as SVG and
+﻿// Draws the anime-style rabbi (6 expressions × idle / blink / talk frames) and the Torah pointer (yad) as SVG and
 // rasterises them to PNG for the app. Build-time only (resvg); the app ships PNGs.
 // Usage: node scripts/build-art.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Resvg } from '@resvg/resvg-js';
+import { PALETTES, yadSvg } from './yad-art.mjs';
 
 const OUT = join(import.meta.dirname, '..', 'src', 'assets', 'art');
 mkdirSync(OUT, { recursive: true });
@@ -191,21 +192,9 @@ for (const [name, e] of Object.entries(EXPRESSIONS)) {
   writeFileSync(join(OUT, `rabbi-${name}-talk.png`), png(rabbi({ ...e, mouth: 'talk' }), 360));
 }
 
-// Yad: a silver pointer ending in a small hand with an extended index finger (tip at the bottom-left).
-const yad = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <defs><linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset="0.5" stop-color="#b9c1c9"/><stop offset="1" stop-color="#8d969f"/></linearGradient></defs>
-  <g transform="rotate(40 100 100)">
-    <rect x="92" y="-10" width="16" height="132" rx="8" fill="url(#silver)" stroke="#6d7680" stroke-width="2"/>
-    <circle cx="100" cy="-8" r="13" fill="url(#silver)" stroke="#6d7680" stroke-width="2"/>
-    <rect x="88" y="34" width="24" height="9" rx="4" fill="#c9a94a"/>
-    <rect x="88" y="78" width="24" height="9" rx="4" fill="#c9a94a"/>
-    <path d="M89 118 L111 118 L116 132 L84 132 Z" fill="#c9a94a"/>
-    <rect x="96" y="148" width="8" height="40" rx="4" fill="url(#silver)" stroke="#6d7680" stroke-width="2"/>
-    <ellipse cx="100" cy="146" rx="16" ry="15" fill="url(#silver)" stroke="#6d7680" stroke-width="2"/>
-    <path d="M90 140 Q100 136 110 140 M90 147 Q100 143 110 147" stroke="#7d8790" stroke-width="1.5" fill="none"/>
-  </g>
-</svg>`;
-writeFileSync(join(OUT, 'yad.png'), png(yad, 160));
+// Yad: an ornate crowned pointer ending in a sculpted hand (scripts/yad-art.mjs); one variant per shop style.
+const YAD_FILES = { silver: 'yad.png', gold: 'yad-gold.png', emerald: 'yad-emerald.png', royal: 'yad-royal.png' };
+for (const [k, file] of Object.entries(YAD_FILES)) writeFileSync(join(OUT, file), png(yadSvg(PALETTES[k]), 256));
 console.log(`art written to ${OUT}`);
 
 // ---- App icon and splash (Android resources). An open Sefer Torah with the yad on the line being read.

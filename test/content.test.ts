@@ -9,6 +9,8 @@ import { TAAM_BY_ID, taamIdOf } from '../src/app/torah/cantillation';
 import { planLessons } from '../src/app/teaching/lessons';
 import { rabbiSays } from '../src/app/teaching/rabbi';
 import { defaultProgress, isUnlocked, migrateProgress, migrateSettings } from '../src/app/core/state';
+import { applyEffortReward, computeParashaSummary, getUserRank } from '../src/app/core/gamification';
+
 import type { VerseEvaluation } from '../src/app/analysis/types';
 
 const portion: PortionData = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'src', 'data', 'bereshit.json'), 'utf8'));
@@ -99,6 +101,21 @@ test('progress migration tolerates garbage and moves v1 self-confirmed verses to
   assert.ok(!isUnlocked(ids, 'Genesis.1.2', p));
   p.practicedVerseIds.push('Genesis.1.1');
   assert.ok(isUnlocked(ids, 'Genesis.1.2', p));
+  p.unlockedVerseIds.push('Genesis.1.10');
+  assert.ok(isUnlocked(ids, 'Genesis.1.10', p));
+  assert.equal(getUserRank(0).tierId, 'beginner');
+  assert.equal(getUserRank(900).tierId, 'barmitzva');
+  assert.equal(getUserRank(2100).tierId, 'baal-kore');
+  const rw = applyEffortReward(p, { kind: 'verse', score: 92, passed: true, aliyah: 1 }, '2026-10-25');
+  assert.equal(rw.tierId, 'baal-kore');
+  assert.equal(rw.stars, 3);
+  assert.equal(p.streakDays, 1);
+  p.bestScores['Genesis.1.1'] = 92;
+  p.bestScores['Genesis.1.2'] = 84;
+  const sum = computeParashaSummary(portion.verses, p, (n) => String(n));
+  assert.equal(sum.aliyot.length, 7);
+  assert.equal(sum.aliyot[0].averageScore, 88);
+  assert.equal(sum.averageScore, 88);
 });
 
 test('rabbi: names words only on confident evidence, reports unusable audio, never claims an unsupported pass', () => {

@@ -1,18 +1,21 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, OnDestroy, computed, inject, signal } from '@angular/core';
+import { goBack } from '../core/navigation';
 import { ActivatedRoute } from '@angular/router';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Screen } from '@nativescript/core';
+import type { ContourResult } from '../audio/analysis.worker';
 import { AudioService } from '../core/audio.service';
 import { ContentService } from '../core/content.service';
-import { StoreService } from '../core/store.service';
+import type { EffortAssessment } from '../core/gamification';
 import { Playback, wordAt } from '../core/playback';
 import { RecordingSession } from '../core/recording';
-import type { ContourResult } from '../audio/analysis.worker';
+import { StoreService } from '../core/store.service';
+import type { LessonCheck } from '../teaching/lesson-check';
+import { planLessons, type LessonUnit } from '../teaching/lessons';
+import { rabbiSays, type RabbiLine } from '../teaching/rabbi';
 import { TAAM_BY_ID } from '../torah/cantillation';
 import { stripAccents } from '../torah/hebrew';
-import { planLessons, type LessonUnit } from '../teaching/lessons';
-import type { LessonCheck } from '../teaching/lesson-check';
-import { rabbiSays, type RabbiLine } from '../teaching/rabbi';
+import { GamificationBarComponent } from '../ui/gamification-bar.component';
 import { RabbiComponent } from '../ui/rabbi.component';
 import { VerseTextComponent } from '../ui/verse-text.component';
 import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-chart.component';
@@ -20,13 +23,19 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 /** Screen E — cantillation lesson for the new te'amim of a verse, taught inside their phrase (spec §12). */
 @Component({
   selector: 'lesson',
-  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent],
+  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent, GamificationBarComponent],
   schemas: [NO_ERRORS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ActionBar title="שיעור טעמים"></ActionBar>
+    <ActionBar title="שיעור טעמים">
+      <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
+      <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="הגדרות" class="ab-action" (tap)="openSettings()"></Label>
+      </ActionItem>
+    </ActionBar>
     <ScrollView>
       <StackLayout class="page">
+        <gamification-bar [compact]="true"></gamification-bar>
         @if (unit(); as u) {
           <Label class="meta" [text]="'שיעור ' + (index() + 1) + ' מתוך ' + units.length"></Label>
           <rabbi [line]="line()"></rabbi>
@@ -65,11 +74,20 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
               <ActivityIndicator busy="true"></ActivityIndicator>
             }
             @if (check(); as c) {
-              @if (c.deviation !== null) {
-                <Label class="meta" [text]="'סטייה מהמנגינה: ' + c.deviation.toFixed(1) + ' חצאי טון (הסף: ' + maxDev + ')'"></Label>
+              @if (lessonReward(); as rw) {
+                <StackLayout class="reward-card">
+                  <Label class="effort-rank-title" [text]="rw.badgeIcon + ' רמת ביצוע: ' + rw.titleHe + ' ' + '⭐'.repeat(rw.stars)"></Label>
+                  <FlexboxLayout flexDirection="row" flexWrap="wrap" justifyContent="space-around">
+                    <Label class="reward-pill reward-pill-xp" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
+                    <Label class="reward-pill reward-pill-coins" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
+                  </FlexboxLayout>
+                </StackLayout>
               }
-              @if (c.status === 'passed') {
-                <Button class="btn btn-primary" [text]="index() + 1 < units.length ? 'לשיעור הבא' : 'לקריאת הפסוק'" (tap)="next()"></Button>
+              @if (c.deviation !== null) {
+                <Label class="meta" [text]="'סטייה מהמנגינה: ' + c.deviation.toFixed(1) + ' חצאי טון (הסף: ' + maxDev.toFixed(2) + ')'"></Label>
+              }
+              @if (c.status === 'passed' || (c.status === 'failed' && c.wordsHeard !== false && c.deviation !== null && c.deviation <= maxDev)) {
+                <Button class="btn btn-primary btn-cta" [text]="index() + 1 < units.length ? '▶ לשיעור הבא' : '▶ לקריאת הפסוק'" (tap)="next()"></Button>
               }
               <Button class="btn" [text]="playback.playing() === 'mine' ? 'עצירה' : 'האזנה להקלטה שלי'" (tap)="playMine()"></Button>
             }
@@ -85,6 +103,10 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 })
 export class LessonComponent implements OnDestroy {
   private nav = inject(RouterExtensions);
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
+  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -92,7 +114,12 @@ export class LessonComponent implements OnDestroy {
   readonly playback = new Playback(this.audio.player);
   readonly rec = new RecordingSession(this.audio.recorder);
   readonly chartW = Math.floor(Screen.mainScreen.widthDIPs - 32);
-  readonly maxDev = this.store.settings().lessonMaxDeviation;
+  get maxDev(): number {
+    return this.store.settings().lessonMaxDeviation;
+  }
+  openSettings(): void {
+    this.nav.navigate(['/settings']);
+  }
 
   readonly verse = this.content.verse(this.route.snapshot.params['verseId'])!;
   readonly ref = this.content.referenceFor(this.verse.id);
@@ -107,6 +134,7 @@ export class LessonComponent implements OnDestroy {
   readonly busy = signal(false);
   readonly heard = signal(false);
   readonly check = signal<LessonCheck | null>(null);
+  readonly lessonReward = signal<EffortAssessment | null>(null);
   readonly error = signal<string | null>(null);
   private refContour = signal<ContourResult | null>(null);
   private clip = signal<{ path: string; startMs: number; endMs: number } | null>(null); // the phrase alone, cut from the verse
@@ -171,6 +199,7 @@ export class LessonComponent implements OnDestroy {
     const u = this.unit()!;
     this.heard.set(false);
     this.check.set(null);
+    this.lessonReward.set(null);
     this.line.set(rabbiSays({ kind: 'lesson-intro', newTaamim: u.newTaamim, words: u.wordIndexes.map((w) => this.verse.words[w].text).join(' ') }));
     this.clip.set(null);
     if (this.ref)
@@ -193,6 +222,7 @@ export class LessonComponent implements OnDestroy {
     this.playback.stop();
     this.error.set(null);
     this.check.set(null);
+    this.lessonReward.set(null);
     const err = await this.rec.start(this.mine, (r) => this.assess(r.interruptedHe), 30_000);
     if (err) this.error.set(err);
     else this.line.set(rabbiSays({ kind: 'recording' }));
@@ -210,10 +240,11 @@ export class LessonComponent implements OnDestroy {
         maxDeviation: this.maxDev, spokenWords: u.wordIndexes.map((w) => this.verse.words[w].spoken),
       });
       this.check.set(c);
-      let failures = 0;
-      if (c.status === 'passed') this.store.masterTaamim(u.newTaamim);
-      else if (c.status === 'failed')
-        this.store.updateProgress((p) => u.newTaamim.forEach((t) => (failures = p.lessonFailures[t] = (p.lessonFailures[t] ?? 0) + 1)));
+      if (c.status !== 'inconclusive') {
+        const rw = this.store.recordLessonAttempt(c.status === 'passed', u.newTaamim, c.deviation);
+        this.lessonReward.set(rw);
+      }
+      const failures = u.newTaamim.reduce((m, t) => Math.max(m, this.store.progress().lessonFailures[t] ?? 0), 0);
       this.line.set(rabbiSays({ kind: 'lesson-result', passed: c.status === 'passed', inconclusive: c.status === 'inconclusive', reasonHe: c.reasonHe, failures, newTaamim: u.newTaamim }));
     } catch (e) {
       this.error.set(`הבדיקה נכשלה: ${e}`);

@@ -1,39 +1,60 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, inject, signal } from '@angular/core';
+import { goBack } from '../core/navigation';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Dialogs } from '@nativescript/core';
-import { AudioService } from '../core/audio.service';
-import { ContentService } from '../core/content.service';
-import { StoreService } from '../core/store.service';
-import type { CtcStatus } from '../audio/analysis.worker';
 import { ANALYZERS } from '../analysis/registry';
 import { CATEGORY_NAME_HE, type Category } from '../analysis/types';
+import type { CtcStatus } from '../audio/analysis.worker';
+import { AudioService } from '../core/audio.service';
+import { ContentService } from '../core/content.service';
+import { sendLocalReminderNotification } from '../core/notifications';
+import { StoreService } from '../core/store.service';
 
-export const APP_VERSION = '0.5.0 (POC)'; // keep in step with versionName in App_Resources/Android/app.gradle
+export const APP_VERSION = '0.6.0 (Gamified Edition)'; // keep in step with versionName in App_Resources/Android/app.gradle
 
-/** Screen H — settings, privacy, analyzer status and attributions. */
+/** Screen H — settings, daily reminder notifications, privacy, analyzer status and attributions. */
 @Component({
   selector: 'settings',
   imports: [NativeScriptCommonModule],
   schemas: [NO_ERRORS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ActionBar title="הגדרות"></ActionBar>
+    <ActionBar title="הגדרות">
+      <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
+    </ActionBar>
     <ScrollView>
       <StackLayout class="page">
-        <Label class="section" text="בדיקה ומעבר"></Label>
+        @if (notifToast()) {
+          <Label class="reward-toast" textWrap="true" [text]="notifToast()"></Label>
+        }
+
+        <Label class="section" text="בדיקה ורמת קושי"></Label>
         <GridLayout columns="auto, auto, auto, *" class="setting">
           <Label col="3" class="body" text="ציון מעבר"></Label>
           <Button col="2" class="btn-small" text="−" (tap)="set('passingThreshold', s().passingThreshold - 5)"></Button>
           <Label col="1" class="setting-value" [text]="'' + s().passingThreshold"></Label>
           <Button col="0" class="btn-small" text="+" (tap)="set('passingThreshold', s().passingThreshold + 5)"></Button>
         </GridLayout>
-        <Label class="meta" textWrap="true" text="הציון קובע מעבר רק כשכל הבדיקות מאומתות. כרגע חלקן ניסיוניות, ולכן מוצגת בדיקה חלקית."></Label>
+        <Label class="meta" textWrap="true" text="הציון המשוקלל הנדרש כדי לעבור פסוק ולהמשיך לפסוק הבא (50–100)."></Label>
         <GridLayout columns="auto, auto, auto, *" class="setting">
           <Label col="3" class="body" text="סבלנות בשיעורי טעמים (חצאי טון)"></Label>
           <Button col="2" class="btn-small" text="−" (tap)="set('lessonMaxDeviation', s().lessonMaxDeviation - 0.25)"></Button>
           <Label col="1" class="setting-value" [text]="s().lessonMaxDeviation.toFixed(2)"></Label>
           <Button col="0" class="btn-small" text="+" (tap)="set('lessonMaxDeviation', s().lessonMaxDeviation + 0.25)"></Button>
         </GridLayout>
+
+        <Label class="section" text="🔔 התראות ותזכורות יומיות"></Label>
+        <GridLayout columns="auto, *" class="setting">
+          <Label col="1" class="body" textWrap="true" text="תזכורת יומית לשמירה על רצף הקריאה"></Label>
+          <Switch col="0" [checked]="s().reminderEnabled" (checkedChange)="set('reminderEnabled', $any($event).value)"></Switch>
+        </GridLayout>
+        <GridLayout columns="auto, auto, auto, *" class="setting">
+          <Label col="3" class="body" text="שעת תזכורת מועדפת"></Label>
+          <Button col="2" class="btn-small" text="−" (tap)="set('reminderHour', (s().reminderHour + 23) % 24)"></Button>
+          <Label col="1" class="setting-value" [text]="s().reminderHour + ':00'"></Label>
+          <Button col="0" class="btn-small" text="+" (tap)="set('reminderHour', (s().reminderHour + 1) % 24)"></Button>
+        </GridLayout>
+        <Button class="btn" text="🔔 שלח התראת תזכורת עכשיו (בדיקה)" (tap)="testNotification()"></Button>
 
         <Label class="section" text="הגייה"></Label>
         <GridLayout columns="*, *" class="setting">
@@ -68,6 +89,10 @@ export const APP_VERSION = '0.5.0 (POC)'; // keep in step with versionName in Ap
 })
 export class SettingsComponent {
   nav = inject(RouterExtensions);
+
+  goBack(): void {
+    goBack(this.nav, ['/']);
+  }
   private store = inject(StoreService);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -75,6 +100,7 @@ export class SettingsComponent {
   readonly version = APP_VERSION;
   readonly categories = Object.keys(ANALYZERS) as Category[];
   readonly ctcText = signal('רכיב זיהוי המילים: בודק…');
+  readonly notifToast = signal<string | null>(null);
   readonly coverageText = (() => {
     const c = this.content.verseIds.map((id) => this.content.coverage(id));
     return `תוכן: ${c.length} פסוקים. הקלטות קורא: ${c.filter((x) => x.reference !== 'missing').length} (כולן ממתינות לאישור מומחה), מתוכן ${c.filter((x) => x.timing === 'check').length} עם תזמון שדורש בדיקה.`;
@@ -97,6 +123,11 @@ export class SettingsComponent {
 
   set<K extends keyof ReturnType<typeof this.s>>(key: K, value: ReturnType<typeof this.s>[K]): void {
     this.store.updateSettings({ [key]: value });
+  }
+
+  testNotification(): void {
+    const ok = sendLocalReminderNotification(this.store.progress().streakDays);
+    this.notifToast.set(ok ? '🔔 התראת תזכורת נשלחה בהצלחה לוילון ההתראות!' : 'לא ניתן היה לשלוח התראה.');
   }
 
   analyzerLine(c: Category): string {

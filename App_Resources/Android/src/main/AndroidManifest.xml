@@ -11,6 +11,7 @@
 
 	<!-- Offline app: no INTERNET permission in release builds (src/debug adds it for dev tooling only). -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 	<!-- onnxruntime-android declares network permissions and a telemetry provider; this app has no runtime
 	     network use and no remote telemetry (spec §2), so they are stripped from the merged manifest. -->
 	<uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>

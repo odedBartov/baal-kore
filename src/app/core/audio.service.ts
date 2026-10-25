@@ -96,6 +96,11 @@ export class AudioService {
       referenceApproval: this.content.coverage(verse.id).reference,
       passingThreshold: this.store.settings().passingThreshold,
       pronunciation: this.store.settings().pronunciation,
+      melody: {
+        wordErrorSt: this.store.settings().lessonMaxDeviation,
+        wordMajorSt: this.store.settings().lessonMaxDeviation + 0.5,
+        scoreBad: Math.max(1.0, this.store.settings().lessonMaxDeviation * 2),
+      },
     });
   }
 }

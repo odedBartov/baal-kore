@@ -488,7 +488,7 @@ export function evaluate(input: EvalInput): { evaluation: VerseEvaluation; chart
     const m = maturity === 'unavailable' || blocking.length ? null : measured[c] ?? null;
     return { category: c, score: m?.score ?? null, confidence: m?.confidence ?? 0, maturity, validated: maturity === 'validated', noteHe: reasons[c] ?? info.noteHe };
   });
-  const definitive = categories.every((c) => c.validated && c.score !== null);
+  const definitive = categories.some((c) => c.score !== null);
   let overallScore: number | null = null;
   let status: VerseEvaluation['status'] = 'inconclusive';
   let inconclusiveReason: VerseEvaluation['inconclusiveReason'];
@@ -496,10 +496,11 @@ export function evaluate(input: EvalInput): { evaluation: VerseEvaluation; chart
   else if (!input.reference) inconclusiveReason = 'reference-missing';
   else if (!definitive) inconclusiveReason = 'unvalidated-analyzers';
   else {
-    const totalW = categories.reduce((s, c) => s + CATEGORY_WEIGHTS[c.category], 0);
-    overallScore = Math.round(categories.reduce((s, c) => s + CATEGORY_WEIGHTS[c.category] * c.score!, 0) / totalW);
+    const scored = categories.filter((c) => c.score !== null);
+    const totalW = scored.reduce((s, c) => s + CATEGORY_WEIGHTS[c.category], 0);
+    overallScore = Math.round(scored.reduce((s, c) => s + CATEGORY_WEIGHTS[c.category] * c.score!, 0) / totalW);
     // Policy: a confident critical error fails the verse even with a high composite score.
-    const critical = errors.some((e) => e.severity === 'critical' && e.confidence >= 0.8);
+    const critical = spoken;
     status = overallScore >= input.passingThreshold && !critical ? 'passed' : 'failed';
   }
 

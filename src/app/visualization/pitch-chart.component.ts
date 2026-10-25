@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, inject, input } from '@angular/core';
+import { StoreService } from '../core/store.service';
 import { NativeScriptCommonModule } from '@nativescript/angular';
 import { stripMarks } from '../torah/hebrew';
 import { fitRange, HOP_MS, runs, smooth } from './chart-lines';
@@ -51,7 +52,7 @@ const LABEL_H = 26; // word labels under the chart
         @if (head(); as h) {
           <StackLayout [left]="h.x" top="0" width="2" [height]="height()" class="chart-playhead"></StackLayout>
           @if (yad()) {
-            <Image src="~/assets/art/yad.png" width="30" height="30" [left]="h.x - 2" [top]="h.y - 28"></Image>
+            <Image [src]="store.equippedYadAsset()" width="44" height="44" [left]="h.x - 7" [top]="h.y - 37" stretch="aspectFit"></Image>
           }
         }
       </AbsoluteLayout>
@@ -59,6 +60,7 @@ const LABEL_H = 26; // word labels under the chart
   `,
 })
 export class PitchChartComponent {
+  readonly store = inject(StoreService);
   title = input('');
   series = input<ChartSeries[]>([]);
   durationMs = input(1);

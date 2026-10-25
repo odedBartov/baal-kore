@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, OnDestroy, computed, inject, signal } from '@angular/core';
+import { goBack } from '../core/navigation';
 import { ActivatedRoute } from '@angular/router';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Screen } from '@nativescript/core';
@@ -12,25 +13,34 @@ import { planLessons } from '../teaching/lessons';
 import { stripAccents } from '../torah/hebrew';
 import { rabbiSays, type RabbiLine } from '../teaching/rabbi';
 import { RabbiComponent } from '../ui/rabbi.component';
+import { GamificationBarComponent } from '../ui/gamification-bar.component';
+import { ALIYAH_NAMES_HE } from '../core/gamification';
 import { VerseTextComponent } from '../ui/verse-text.component';
 import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-chart.component';
 
 /** Screen F — verse practice: listen (with the yad), then record the whole verse and analyse it on-device. */
 @Component({
   selector: 'practice',
-  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent],
+  imports: [NativeScriptCommonModule, RabbiComponent, VerseTextComponent, PitchChartComponent, GamificationBarComponent],
   schemas: [NO_ERRORS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ActionBar [title]="label"></ActionBar>
+    <ActionBar [title]="label">
+      <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
+      <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="הגדרות" class="ab-action" (tap)="nav.navigate(['/settings'])"></Label>
+      </ActionItem>
+    </ActionBar>
     <ScrollView>
       <StackLayout class="page">
+        <gamification-bar [compact]="true"></gamification-bar>
         <rabbi [line]="line()"></rabbi>
         <verse-text [verse]="verse" [activeWord]="activeWord()"></verse-text>
         @if (verse.notes.length) {
           <Label class="note" textWrap="true" [text]="'הערת נוסח: ' + verse.notes.join(' ')"></Label>
         }
         <FlexboxLayout class="badges" flexDirection="row" flexWrap="wrap">
+          <Label class="badge-gold" [text]="aliyahName"></Label>
           <Label class="badge" [class.badge-warn]="cov.reference !== 'approved'" [text]="refBadge"></Label>
           @if (cov.timing === 'check') {
             <Label class="badge badge-warn" text="תזמון המילים דורש בדיקה"></Label>
@@ -71,6 +81,10 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 })
 export class PracticeComponent implements OnDestroy {
   nav = inject(RouterExtensions);
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
+  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -81,6 +95,7 @@ export class PracticeComponent implements OnDestroy {
 
   readonly verse = this.content.verse(this.route.snapshot.params['id'])!;
   readonly label = this.content.label(this.verse);
+  readonly aliyahName = ALIYAH_NAMES_HE[this.verse.aliyah]?.full ?? `עלייה ${this.verse.aliyah}`;
   readonly ref = this.content.referenceFor(this.verse.id);
   readonly cov = this.content.coverage(this.verse.id);
   readonly refBadge = this.cov.reference === 'approved' ? 'הקלטת קורא מאושרת' : this.cov.reference === 'pending' ? 'הקלטת קורא אמיתי – ממתינה לאישור מומחה' : 'אין הקלטת קורא';
@@ -169,7 +184,7 @@ export class PracticeComponent implements OnDestroy {
       console.log('EVAL_TIMINGS ' + JSON.stringify({ verse: this.verse.id, audioMs: Math.round(samples / 16), ...res.timingsMs }));
       const previous = this.store.progress().lastAttempts[this.verse.id];
       this.store.evaluations.set(this.verse.id, { evaluation: res.evaluation, charts: res.charts, recording: wav, previous });
-      this.store.recordAttempt(res.evaluation);
+      this.store.recordAttempt(res.evaluation, this.verse.aliyah);
       this.nav.navigate(['/results', this.verse.id]);
     } catch (e) {
       this.error.set(`הניתוח נכשל: ${e}`);

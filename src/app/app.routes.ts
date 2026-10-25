@@ -6,6 +6,8 @@ import { LessonComponent } from './features/lesson.component';
 import { PracticeComponent } from './features/practice.component';
 import { ResultsComponent } from './features/results.component';
 import { SettingsComponent } from './features/settings.component';
+import { ChallengesComponent } from './features/challenges.component';
+import { ShopComponent } from './features/shop.component';
 import { AudioSpikeComponent } from './spike/audio-spike.component';
 
 export const routes: Routes = [
@@ -15,6 +17,8 @@ export const routes: Routes = [
   { path: 'verse/:id', component: PracticeComponent },
   { path: 'lesson/:verseId', component: LessonComponent },
   { path: 'results/:id', component: ResultsComponent },
+  { path: 'challenges', component: ChallengesComponent },
+  { path: 'shop', component: ShopComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'diagnostics', component: AudioSpikeComponent },
 ];

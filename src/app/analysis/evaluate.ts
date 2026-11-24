@@ -181,7 +181,23 @@ export function evaluate(input: EvalInput): { evaluation: VerseEvaluation; chart
     const { lp, T } = input.ctc;
     try {
       const spans = forcedAlign(lp, T, buildTarget(input.words.map((w) => w.spoken)));
-      studentStarts = spans.map((s) => s.startFrame * FRAME_MS);
+      const rawStarts = spans.map((s) => s.startFrame * FRAME_MS);
+      const half = Math.round(SR * 0.01);
+      const level = (ms: number) => {
+        const c = Math.round((ms * SR) / 1000);
+        let e = 0;
+        for (let i = Math.max(0, c - half); i < Math.min(input.student.length, c + half); i++) e += input.student[i] * input.student[i];
+        return e;
+      };
+      studentStarts = rawStarts.map((ms, i) => {
+        let best = ms, bestE = Infinity;
+        const minMs = i > 0 ? rawStarts[i - 1] + 60 : Math.max(0, ms - 110);
+        for (let t = Math.max(minMs, ms - 110); t <= Math.min(q.durationMs, ms + 10); t += 5) {
+          const e = level(t);
+          if (e < bestE) (bestE = e), (best = t);
+        }
+        return best;
+      });
       ctcSpans = true;
     } catch {
       // too little audio for the text: timing falls back to DTW below
@@ -493,8 +509,7 @@ export function evaluate(input: EvalInput): { evaluation: VerseEvaluation; chart
   let status: VerseEvaluation['status'] = 'inconclusive';
   let inconclusiveReason: VerseEvaluation['inconclusiveReason'];
   if (blocking.length) inconclusiveReason = 'audio-quality';
-  else if (!input.reference) inconclusiveReason = 'reference-missing';
-  else if (!definitive) inconclusiveReason = 'unvalidated-analyzers';
+  else if (!definitive) inconclusiveReason = !input.reference ? 'reference-missing' : 'unvalidated-analyzers';
   else {
     const scored = categories.filter((c) => c.score !== null);
     const totalW = scored.reduce((s, c) => s + CATEGORY_WEIGHTS[c.category], 0);

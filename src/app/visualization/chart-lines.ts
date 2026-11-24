@@ -2,12 +2,20 @@
 
 export const HOP_MS = 10;
 
-/** Median of 5, then mean of 5, over voiced frames: tracker jitter and one-frame octave slips disappear. */
+/** Median of 5, then mean of 5, over voiced frames: tracker jitter, boundary hooks, and one-frame octave slips disappear. */
 export function smooth(p: (number | null)[]): (number | null)[] {
-  const near = (q: (number | null)[], i: number) => [q[i - 2], q[i - 1], q[i], q[i + 1], q[i + 2]].filter((v): v is number => v !== null && v !== undefined);
-  const med = p.map((v, i) => {
+  const cleaned = p.map((v, i) => {
     if (v === null) return null;
-    const w = near(p, i).sort((a, b) => a - b);
+    const prev = p[i - 1] ?? null, next = p[i + 1] ?? null;
+    if (prev === null && next === null) return null;
+    if (prev === null && next !== null && Math.abs(v - next) > 0.8) return null;
+    if (next === null && prev !== null && Math.abs(v - prev) > 0.8) return null;
+    return v;
+  });
+  const near = (q: (number | null)[], i: number) => [q[i - 2], q[i - 1], q[i], q[i + 1], q[i + 2]].filter((v): v is number => v !== null && v !== undefined);
+  const med = cleaned.map((v, i) => {
+    if (v === null) return null;
+    const w = near(cleaned, i).sort((a, b) => a - b);
     return w[w.length >> 1];
   });
   return med.map((v, i) => {

@@ -1,4 +1,4 @@
-package il.co.infraedge.torahtutor;
+package com.baalkore.app;
 
 import android.media.AudioFormat;
 import android.media.MediaCodec;
@@ -6,6 +6,7 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -15,14 +16,81 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Decodes a time range of any Android-supported audio file (Ogg Vorbis, MP3, AAC, FLAC, WAV…) into a
- * mono 16-bit WAV at the source sample rate. Reference recordings stay in their original files; this
- * produces the per-verse PCM the analysis and playback need. Returns the sample rate.
+ * mono 16-bit WAV at the source sample rate. To avoid Ogg Vorbis page-granule seek/timestamp drift in
+ * Android's MediaExtractor, full source files are decoded sequentially from sample 0 once into a cached
+ * mono WAV and sliced by exact PCM sample index. Returns the sample rate.
  */
 public final class AudioDecoder {
     private AudioDecoder() {
     }
 
     public static int decodeToWav(String src, String dst, long startMs, long endMs) throws IOException {
+        if (startMs <= 0 && endMs <= 0) {
+            return decodeFullToWav(src, dst);
+        }
+        File dstFile = new File(dst);
+        File parent = dstFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        File srcFile = new File(src);
+        File fullWav = new File(parent, "_full_" + srcFile.getName() + "_" + srcFile.length() + ".wav");
+        if (!isValidWav(fullWav)) {
+            File tmp = new File(parent, fullWav.getName() + ".tmp");
+            decodeFullToWav(src, tmp.getAbsolutePath());
+            if (fullWav.exists()) fullWav.delete();
+            if (!tmp.renameTo(fullWav)) {
+                decodeFullToWav(src, fullWav.getAbsolutePath());
+                tmp.delete();
+            }
+        }
+        return sliceWav(fullWav, dstFile, startMs, endMs);
+    }
+
+    private static boolean isValidWav(File f) {
+        if (!f.exists() || f.length() <= 44) return false;
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            byte[] h = new byte[44];
+            raf.readFully(h);
+            ByteBuffer bb = ByteBuffer.wrap(h).order(ByteOrder.LITTLE_ENDIAN);
+            int riffSize = bb.getInt(4);
+            int rate = bb.getInt(24);
+            int dataSize = bb.getInt(40);
+            return rate > 0 && dataSize > 0 && (long) riffSize + 8L == f.length() && (long) dataSize + 44L == f.length();
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static int sliceWav(File fullWav, File dstFile, long startMs, long endMs) throws IOException {
+        try (RandomAccessFile in = new RandomAccessFile(fullWav, "r")) {
+            byte[] h = new byte[44];
+            in.readFully(h);
+            ByteBuffer bb = ByteBuffer.wrap(h).order(ByteOrder.LITTLE_ENDIAN);
+            int rate = bb.getInt(24);
+            long totalFrames = (fullWav.length() - 44L) / 2L;
+            long startFrame = Math.max(0L, Math.min(totalFrames, Math.round(startMs * (double) rate / 1000.0)));
+            long endFrame = endMs > 0 ? Math.max(startFrame, Math.min(totalFrames, Math.round(endMs * (double) rate / 1000.0))) : totalFrames;
+            long frames = endFrame - startFrame;
+            in.seek(44L + startFrame * 2L);
+            try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dstFile), 1 << 16)) {
+                out.write(new byte[44]);
+                byte[] buf = new byte[1 << 15];
+                long remaining = frames * 2L;
+                while (remaining > 0) {
+                    int toRead = (int) Math.min(buf.length, remaining);
+                    int r = in.read(buf, 0, toRead);
+                    if (r <= 0) break;
+                    out.write(buf, 0, r);
+                    remaining -= r;
+                }
+            }
+            writeHeader(dstFile.getAbsolutePath(), rate, frames);
+            return rate;
+        }
+    }
+
+    private static int decodeFullToWav(String src, String dst) throws IOException {
         MediaExtractor ex = new MediaExtractor();
         MediaCodec codec = null;
         try {
@@ -41,8 +109,6 @@ public final class AudioDecoder {
             int rate = fmt.getInteger(MediaFormat.KEY_SAMPLE_RATE);
             int channels = fmt.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
             boolean floatPcm = false;
-            long startUs = startMs * 1000L, endUs = endMs > 0 ? endMs * 1000L : Long.MAX_VALUE;
-            ex.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
 
             codec = MediaCodec.createDecoderByType(fmt.getString(MediaFormat.KEY_MIME));
             codec.configure(fmt, null, null, 0);
@@ -59,11 +125,12 @@ public final class AudioDecoder {
                     if (ii >= 0) {
                         ByteBuffer b = codec.getInputBuffer(ii);
                         int n = ex.readSampleData(b, 0);
-                        if (n < 0 || ex.getSampleTime() > endUs) {
+                        if (n < 0) {
                             codec.queueInputBuffer(ii, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                             inDone = true;
                         } else {
-                            codec.queueInputBuffer(ii, 0, n, ex.getSampleTime(), 0);
+                            long pts = Math.max(0L, ex.getSampleTime());
+                            codec.queueInputBuffer(ii, 0, n, pts, 0);
                             ex.advance();
                         }
                     }
@@ -81,26 +148,18 @@ public final class AudioDecoder {
                     int bytesPerSample = floatPcm ? 4 : 2;
                     int n = info.size / bytesPerSample / channels;
                     byte[] pcm = new byte[n * 2];
-                    int kept = 0;
                     for (int f = 0; f < n; f++) {
-                        long t = info.presentationTimeUs + f * 1_000_000L / rate; // trim by timestamp: seeks are approximate
-                        if (t < startUs) continue;
-                        if (t >= endUs) {
-                            outDone = true;
-                            break;
-                        }
                         float s = 0;
                         for (int c = 0; c < channels; c++) {
                             int p = (f * channels + c) * bytesPerSample;
                             s += floatPcm ? ob.getFloat(p) : ob.getShort(p) / 32768f;
                         }
                         int v = Math.max(-32768, Math.min(32767, Math.round(s / channels * 32767f)));
-                        pcm[2 * kept] = (byte) v;
-                        pcm[2 * kept + 1] = (byte) (v >> 8);
-                        kept++;
+                        pcm[2 * f] = (byte) v;
+                        pcm[2 * f + 1] = (byte) (v >> 8);
                     }
-                    out.write(pcm, 0, 2 * kept);
-                    frames += kept;
+                    out.write(pcm, 0, 2 * n);
+                    frames += n;
                     codec.releaseOutputBuffer(oi, false);
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) outDone = true;
                 }

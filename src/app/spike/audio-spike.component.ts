@@ -29,12 +29,12 @@ const ltr = (s: string | number) => `⁦${s}⁩`;
         <Label class="body" textWrap="true" text="הקליטו את אותו פסוק פעמיים (א׳ ו־ב׳), אפשר בגובה או בקצב אחר. המסך מציג את קו המנגינה, מיישר בין ההקלטות ומודד זמני עיבוד במכשיר."></Label>
         @for (t of takes; track t) {
           <GridLayout columns="auto, auto, *" class="setting">
-            <Label col="2" class="body" [text]="'הקלטה ' + (t === 'A' ? 'א' : 'ב') + (rec.active() && recording() === t ? ' — מקליט…' : has()[t] ? ' — מוכנה' : '')"></Label>
-            <Button col="1" class="btn-small" [text]="rec.active() && recording() === t ? 'עצירה' : 'הקלטה'" (tap)="record(t)" [isEnabled]="!busy()"></Button>
-            <Button col="0" class="btn-small" text="השמעה" (tap)="playback.play(file(t), t)" [isEnabled]="has()[t] && !rec.active()"></Button>
+            <Label col="2" class="body" textWrap="true" [text]="'הקלטה ' + (t === 'A' ? 'א' : 'ב') + (rec.active() && recording() === t ? ' — מקליט…' : has()[t] ? ' — מוכנה' : '')"></Label>
+            <Button col="1" class="btn-small" textWrap="true" [text]="rec.active() && recording() === t ? 'עצירה' : 'הקלטה'" (tap)="record(t)" [isEnabled]="!busy()"></Button>
+            <Button col="0" class="btn-small" textWrap="true" text="השמעה" (tap)="playback.play(file(t), t)" [isEnabled]="has()[t] && !rec.active()"></Button>
           </GridLayout>
         }
-        <Button class="btn btn-primary" [text]="busy() ? 'מנתח…' : 'ניתוח והשוואה'" (tap)="analyze()" [isEnabled]="has().A && !rec.active() && !busy()"></Button>
+        <Button class="btn btn-primary" textWrap="true" [text]="busy() ? 'מנתח…' : 'ניתוח והשוואה'" (tap)="analyze()" [isEnabled]="has().A && !rec.active() && !busy()"></Button>
         @for (c of charts(); track $index) {
           <pitch-chart [title]="c.title" [series]="c.series" [durationMs]="c.durationMs" [width]="chartW"></pitch-chart>
         }
@@ -44,15 +44,15 @@ const ltr = (s: string | number) => `⁦${s}⁩`;
         @if (error()) {
           <Label class="error" textWrap="true" [text]="error()"></Label>
         }
-        <Label class="section" text="בדיקה על קבצים"></Label>
+        <Label class="section" textWrap="true" text="בדיקה על קבצים"></Label>
         <Label class="meta" textWrap="true" text="קבצי WAV בתיקייה validation של האפליקציה, בשם כמו Genesis.1.1__name.wav, נבדקים בדיוק כמו קריאה של תלמיד (כולל זיהוי המילים במכשיר). ראו docs/validation.md."></Label>
-        <Button class="btn" [text]="busy() ? 'בודק…' : 'בדיקת קבצים (' + files().length + ')'" (tap)="runFiles()" [isEnabled]="files().length > 0 && !busy()"></Button>
+        <Button class="btn" textWrap="true" [text]="busy() ? 'בודק…' : 'בדיקת קבצים (' + files().length + ')'" (tap)="runFiles()" [isEnabled]="files().length > 0 && !busy()"></Button>
         @for (r of runs(); track r.name) {
           <StackLayout class="error-item" (tap)="nav.navigate(['/results', r.verseId])">
             <Label class="body" textWrap="true" [text]="r.name + ': ' + r.summary"></Label>
           </StackLayout>
         }
-        <Label class="meta" [text]="device"></Label>
+        <Label class="meta" textWrap="true" [text]="device"></Label>
       </StackLayout>
     </ScrollView>
   `,

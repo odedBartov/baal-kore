@@ -44,7 +44,7 @@ export const RULES: Rule[] = [
     when: (e) => e.kind === 'welcome',
     say: () => ({ expression: 'happy', text: 'שלום! אני הרב שילמד אתכם לקרוא בתורה. נקשיב יחד לקורא, נלמד את הטעמים, ואחר כך תקראו בעצמכם ואגיד לכם מה כבר טוב ומה כדאי לשפר. אפשר לשיר בגובה שנוח לכם – אני בודק רק את המנגינה עצמה.' }),
   },
-  { id: 'portions', when: (e) => e.kind === 'portions', say: () => ({ expression: 'neutral', text: 'נתחיל בפרשת בראשית. את שאר הפרשות נוסיף בהמשך.' }) },
+  { id: 'portions', when: (e) => e.kind === 'portions', say: () => ({ expression: 'happy', text: 'בחרו חומש מחמשת חומשי התורה, פרשה ועלייה לתרגול. כל 54 פרשות התורה פתוחות לפניכם!' }) },
   { id: 'listening', when: (e) => e.kind === 'listening', say: () => ({ expression: 'explaining', text: 'הקשיבו לקורא ועקבו אחרי היד. שימו לב איפה המנגינה עולה ואיפה היא יורדת.' }) },
   { id: 'recording', when: (e) => e.kind === 'recording', say: () => ({ expression: 'neutral', text: 'אני מקשיב. קראו את כל הפסוק, ובסוף לחצו על "סיום".' }) },
   { id: 'analyzing', when: (e) => e.kind === 'analyzing', say: () => ({ expression: 'thinking', text: 'רגע, אני מקשיב שוב להקלטה…' }) },

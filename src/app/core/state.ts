@@ -5,6 +5,22 @@ import type { Category, EvaluationStatus } from '../analysis/types';
 export type YadStyle = 'silver' | 'gold' | 'royal' | 'emerald';
 export type RabbiFrame = 'classic' | 'gold' | 'crown' | 'emerald';
 
+export const PARASHA_PRICE_ILS = 10;
+export const PARASHA_PRICE_LABEL_HE = '10 ₪';
+
+/** Google Play Console In-App Product ID (SKU) for unlocking Aliyot 2–7 of a Parasha (e.g. `parasha_bereshit`, `parasha_lech_lecha`). */
+export function playProductIdForPortion(portionId: string): string {
+  return `parasha_${portionId.replace(/-/g, '_')}`;
+}
+
+/** Maps a Google Play In-App Product ID back to our internal Parasha ID. */
+export function portionIdFromPlayProductId(productId: string, knownPortionIds: string[]): string | null {
+  for (const id of knownPortionIds) {
+    if (playProductIdForPortion(id) === productId) return id;
+  }
+  return null;
+}
+
 export interface ChallengePlan {
   id: string;
   titleHe: string;
@@ -46,6 +62,7 @@ export interface StudentProgress {
   streakFreezes: number;
   doubleXpRemaining: number;
   unlockedVerseIds: string[];
+  purchasedPortionIds: string[]; // Parashot unlocked via ₪10 Google Play Billing purchase (Aliyot 2–7)
   ownedYads: YadStyle[];
   equippedYad: YadStyle;
   ownedFrames: RabbiFrame[];
@@ -92,6 +109,7 @@ export const defaultProgress = (): StudentProgress => ({
   streakFreezes: 1,
   doubleXpRemaining: 0,
   unlockedVerseIds: [],
+  purchasedPortionIds: [],
   ownedYads: ['silver'],
   equippedYad: 'silver',
   ownedFrames: ['classic'],
@@ -154,6 +172,7 @@ export function migrateProgress(raw: unknown): StudentProgress {
     streakFreezes: pick('streakFreezes', isNonNeg),
     doubleXpRemaining: pick('doubleXpRemaining', isNonNeg),
     unlockedVerseIds: pick('unlockedVerseIds', isList),
+    purchasedPortionIds: pick('purchasedPortionIds', isList),
     ownedYads: pick('ownedYads', (x) => Array.isArray(x) && x.length > 0 && x.every(isYad)),
     equippedYad: pick('equippedYad', isYad),
     ownedFrames: pick('ownedFrames', (x) => Array.isArray(x) && x.length > 0 && x.every(isFrame)),
@@ -186,8 +205,32 @@ export function migrateSettings(raw: unknown): Settings {
   };
 }
 
-/** A verse unlocks once the previous verse is completed or practised, or if unlocked in the shop (spec §4.2). */
-export function isUnlocked(verseIds: string[], id: string, p: StudentProgress): boolean {
+/** Whether Aliyot 2–7 of `portionId` have been unlocked via the ₪10 Parasha purchase. */
+export function isPortionPurchased(portionId: string, p: StudentProgress): boolean {
+  return Boolean(p.purchasedPortionIds?.includes(portionId));
+}
+
+/**
+ * First Aliyah (aliyah === 1) of every Parasha is 100% free and all its verses are immediately open.
+ * Aliyot 2–7 are behind the ₪10 per-Parasha paywall and all their verses open immediately once purchased.
+ */
+export function isAliyahAccessible(portionId: string, aliyah: number, p: StudentProgress): boolean {
+  if (aliyah <= 1) return true;
+  return isPortionPurchased(portionId, p);
+}
+
+export function isVerseAccessible(portionId: string, aliyah: number, p: StudentProgress): boolean {
+  return isAliyahAccessible(portionId, aliyah, p);
+}
+
+/** Legacy verse-level helper preserved for unit test compatibility; uses `isVerseAccessible` when `opts` is provided. */
+export function isUnlocked(
+  verseIds: string[],
+  id: string,
+  p: StudentProgress,
+  opts?: { portionId: string; aliyah: number },
+): boolean {
+  if (opts) return isVerseAccessible(opts.portionId, opts.aliyah, p);
   if (p.unlockedVerseIds?.includes(id)) return true;
   const i = verseIds.indexOf(id);
   if (i <= 0) return i === 0;

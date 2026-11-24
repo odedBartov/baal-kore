@@ -1,0 +1,7 @@
+// Includes the Play Asset Delivery install-time asset pack (:model_assets) when building an AAB for Google Play.
+def isAabTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains("bundle") }
+def modelPackDir = new File(rootProject.projectDir, "../../App_Resources/Android/model_assets")
+if (isAabTask && modelPackDir.exists()) {
+    include ':model_assets'
+    project(':model_assets').projectDir = modelPackDir
+}

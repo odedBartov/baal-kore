@@ -23,7 +23,7 @@ export interface PitchOptions {
   referenceHz?: number; // relativeSemitones reference (default: the recording's median)
 }
 
-export const PITCH_ALGORITHM_VERSION = 'yin-2';
+export const PITCH_ALGORITHM_VERSION = 'yin-3';
 
 // Range covers adult bass chanting (~65 Hz) through children's singing (~1 kHz); nothing may assume a male voice.
 export const DEFAULT_PITCH_OPTIONS: PitchOptions = {
@@ -31,11 +31,11 @@ export const DEFAULT_PITCH_OPTIONS: PitchOptions = {
   maxHz: 1000,
   hopMs: 10,
   threshold: 0.1,
-  maxAperiodicity: 0.25,
-  silenceDb: 25,
+  maxAperiodicity: 0.2,
+  silenceDb: 18,
   floorDb: -60,
-  minVoicedMs: 40,
-  octaveFoldSemitones: 11,
+  minVoicedMs: 60,
+  octaveFoldSemitones: 10,
 };
 
 export function detectPitch(x: Float32Array, sampleRate: number, options: Partial<PitchOptions> = {}): PitchFrame[] {
@@ -97,15 +97,16 @@ export function detectPitch(x: Float32Array, sampleRate: number, options: Partia
     aperiodicity[f] = cmnd[tau];
   }
 
-  // Voicing: periodic enough, loud enough, and inside the search range.
-  const gate = Math.max(percentile(db, 0.95) - o.silenceDb, o.floorDb);
+  // Voicing: periodic enough, loud enough (both relative to peak singing and above room noise floor), and inside search range.
+  const loudDb = percentile(db, 0.95), noiseDb = percentile(db, 0.1);
+  const gate = Math.max(loudDb - o.silenceDb, loudDb - noiseDb >= 8 ? noiseDb + 4.5 : -Infinity, o.floorDb);
   const voiced = new Uint8Array(n);
   for (let f = 0; f < n; f++) {
     voiced[f] = db[f] >= gate && aperiodicity[f] <= o.maxAperiodicity && hz[f] >= o.minHz && hz[f] <= o.maxHz ? 1 : 0;
   }
 
-  // Drop spurious short islands; 5-frame median inside each voiced run removes isolated octave jumps
-  // while keeping real melodic steps (which last longer than 2 frames).
+  // Drop spurious short islands, trim low-energy consonant onset/release pitch scoops at island boundaries,
+  // and apply a 5-frame median + local harmonic fold inside each voiced run.
   const minRun = Math.ceil(o.minVoicedMs / o.hopMs);
   const smooth = new Float32Array(hz);
   for (let f = 0; f < n; ) {
@@ -115,8 +116,18 @@ export function detectPitch(x: Float32Array, sampleRate: number, options: Partia
     }
     let e = f;
     while (e < n && voiced[e]) e++;
-    if (e - f < minRun) voiced.fill(0, f, e);
-    else for (let k = f; k < e; k++) smooth[k] = median(hz.subarray(Math.max(f, k - 2), Math.min(e, k + 3)));
+    let peakDb = -Infinity;
+    for (let k = f; k < e; k++) if (db[k] > peakDb) peakDb = db[k];
+    let s = f, end = e;
+    for (let step = 0; step < 2 && end - s > minRun; step++) {
+      if (db[s] < peakDb - 6 && Math.abs(12 * Math.log2(hz[s] / hz[s + 1])) > 0.8) voiced[s++] = 0;
+      if (end - s > minRun && db[end - 1] < peakDb - 6 && Math.abs(12 * Math.log2(hz[end - 1] / hz[end - 2])) > 0.8) voiced[--end] = 0;
+    }
+    if (end - s < minRun) {
+      voiced.fill(0, f, e);
+    } else {
+      for (let k = s; k < end; k++) smooth[k] = median(hz.subarray(Math.max(s, k - 2), Math.min(end, k + 3)));
+    }
     f = e;
   }
 

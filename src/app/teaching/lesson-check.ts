@@ -27,7 +27,7 @@ export const LESSON_WORDS_MIN = 0.5; // provisional, from the lesson sweep in do
  * next one is heard. Forced alignment marks a word's start late, and the dip sits 0–120 ms before it on the bundled
  * reader (1,785 boundaries); later dips are between syllables of the word itself.
  */
-export function cutPhrase(x: Float32Array, sampleRate: number, words: { startMs: number }[], first: number, last: number) {
+export function cutPhrase(x: Float32Array, sampleRate: number, words: { startMs: number; endMs?: number }[], first: number, last: number) {
   const durMs = (x.length / sampleRate) * 1000, half = Math.round(sampleRate * 0.01);
   const level = (ms: number) => {
     const c = Math.round((ms * sampleRate) / 1000);
@@ -44,7 +44,9 @@ export function cutPhrase(x: Float32Array, sampleRate: number, words: { startMs:
     return best;
   };
   const startMs = dipBefore(words[first].startMs);
-  const endMs = last + 1 < words.length ? Math.max(startMs, dipBefore(words[last + 1].startMs)) : durMs;
+  const nextDip = last + 1 < words.length ? Math.max(startMs, dipBefore(words[last + 1].startMs)) : durMs;
+  const wordEnd = words[last]?.endMs;
+  const endMs = wordEnd !== undefined && wordEnd > startMs ? Math.min(nextDip, wordEnd + 40) : nextDip;
   const samples = x.slice(Math.round((startMs * sampleRate) / 1000), Math.round((endMs * sampleRate) / 1000));
   const fade = Math.min(2 * half, samples.length >> 1); // 20 ms
   for (let i = 0; i < fade; i++) (samples[i] *= i / fade), (samples[samples.length - 1 - i] *= i / fade);

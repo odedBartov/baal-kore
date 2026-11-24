@@ -16,26 +16,26 @@ import { StoreService } from '../core/store.service';
         <Button col="1" class="hud-pill hud-pill-quest" text="🎯 אתגרים" (tap)="go('/challenges')"></Button>
 
         <!-- Center: Coins & Booster -->
-        <FlexboxLayout col="2" flexDirection="row" justifyContent="center" alignItems="center">
+        <FlexboxLayout col="2" flexDirection="row" flexWrap="wrap" justifyContent="center" alignItems="center">
           @if (store.progress().doubleXpRemaining > 0) {
-            <Label class="hud-stat hud-boost" [text]="'⚡x2 (' + store.progress().doubleXpRemaining + ')'"></Label>
+            <Label class="hud-stat hud-boost" textWrap="true" [text]="'⚡x2 (' + store.progress().doubleXpRemaining + ')'"></Label>
           }
-          <Label class="hud-stat hud-coins" [text]="'🪙 ' + store.progress().coins" (tap)="go('/shop')"></Label>
+          <Label class="hud-stat hud-coins" textWrap="true" [text]="'🪙 ' + store.progress().coins" (tap)="go('/shop')"></Label>
         </FlexboxLayout>
 
         <!-- Right: Streak & Freeze -->
-        <FlexboxLayout col="3" flexDirection="row" alignItems="center" (tap)="go('/challenges')">
+        <FlexboxLayout col="3" flexDirection="row" flexWrap="wrap" alignItems="center" (tap)="go('/challenges')">
           @if (store.progress().streakFreezes > 0) {
-            <Label class="hud-freeze" [text]="'🧊' + store.progress().streakFreezes"></Label>
+            <Label class="hud-freeze" textWrap="true" [text]="'🧊' + store.progress().streakFreezes"></Label>
           }
-          <Label class="hud-stat hud-streak" [text]="'🔥 ' + store.progress().streakDays"></Label>
+          <Label class="hud-stat hud-streak" textWrap="true" [text]="'🔥 ' + store.progress().streakDays"></Label>
         </FlexboxLayout>
       </GridLayout>
 
       @if (!compact()) {
         <GridLayout columns="auto, *" class="hud-rank-row" (tap)="go('/challenges')">
-          <Label col="0" class="hud-xp-text" [text]="store.rank().currentXp + ' / ' + store.rank().nextLevelXp + ' XP'"></Label>
-          <Label col="1" class="hud-rank-title" [text]="store.rank().badgeIcon + ' רמה ' + store.rank().level + ' · ' + store.rank().titleHe"></Label>
+          <Label col="0" class="hud-xp-text" textWrap="true" [text]="store.rank().currentXp + ' / ' + store.rank().nextLevelXp + ' XP'"></Label>
+          <Label col="1" class="hud-rank-title" textWrap="true" [text]="store.rank().badgeIcon + ' רמה ' + store.rank().level + ' · ' + store.rank().titleHe"></Label>
         </GridLayout>
         <GridLayout class="hud-xp-track" height="7">
           <StackLayout class="hud-xp-fill" horizontalAlignment="right" [width]="(store.rank().progressPct / 100) * 320"></StackLayout>

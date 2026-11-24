@@ -107,22 +107,38 @@ async function alignReader(reader: Reader, portion: PortionData) {
     const words = vs.flatMap((v) => v.words.map((w) => w.spoken));
     const spans = forcedAlign(lp, T, buildTarget(words));
 
-    // Word ends: extend past the last letter while the voice continues (melismas belong to the word),
-    // never into the next word. Activity = frame level within 25 dB of the loud level.
+    // Word starts snapped to the inter-word acoustic dip; word ends placed at the last voiced frame (+40 ms release)
+    // before the next word's start so pauses and trailing hum are never included inside words or verse ends.
     const pitch = detectPitch(x, SR);
     for (const p of pitch) if (p.frequencyHz) voicedHz.push(p.frequencyHz);
-    const gate = percentile(Float32Array.from(pitch, (p) => p.rmsDb), 0.95) - 25;
-    const active = (ms: number) => (pitch[Math.min(pitch.length - 1, Math.round(ms / 10))]?.rmsDb ?? -120) >= gate;
-    const startMs = spans.map((s) => s.startFrame * FRAME_MS);
+    const p95 = percentile(Float32Array.from(pitch, (p) => p.rmsDb), 0.95);
+    const p10 = percentile(Float32Array.from(pitch, (p) => p.rmsDb), 0.1);
+    const gate = Math.max(p95 - 18, p10 + 4.5);
+    const half = Math.round(SR * 0.01);
+    const level = (ms: number) => {
+      const c = Math.round((ms * SR) / 1000);
+      let e = 0;
+      for (let i = Math.max(0, c - half); i < Math.min(x.length, c + half); i++) e += x[i] * x[i];
+      return e;
+    };
+    const dipBefore = (ms: number, minMs: number) => {
+      let best = ms, bestE = Infinity;
+      for (let t = Math.max(minMs, ms - 110); t <= Math.min(durationMs, ms + 10); t += 5) {
+        const e = level(t);
+        if (e < bestE) (bestE = e), (best = t);
+      }
+      return best;
+    };
+    const rawStarts = spans.map((s) => s.startFrame * FRAME_MS);
+    const startMs = rawStarts.map((s, i) => dipBefore(s, i > 0 ? rawStarts[i - 1] + 60 : Math.max(0, s - 110)));
     const endMs = spans.map((s, i) => {
       const limit = i + 1 < spans.length ? startMs[i + 1] : durationMs;
-      let e = (s.endFrame + 1) * FRAME_MS, quiet = 0;
-      while (e + 10 < limit) {
-        quiet = active(e) ? 0 : quiet + 10;
-        if (quiet > 80) break;
-        e += 10;
+      const f0 = Math.ceil(startMs[i] / 10), f1 = Math.floor((limit - 10) / 10);
+      let lastVoiced = Math.min(f1, Math.round(((s.endFrame + 1) * FRAME_MS) / 10));
+      for (let f = f0; f <= f1; f++) {
+        if (pitch[f]?.voiced || (pitch[f]?.rmsDb ?? -120) >= gate + 2) lastVoiced = f;
       }
-      return Math.min(limit, e - quiet);
+      return Math.min(limit, Math.max(startMs[i] + 80, lastVoiced * 10 + 40));
     });
 
     const relPath = `assets/reference/${reader.id}/aliyah-${al.n}.oga`;
@@ -138,8 +154,8 @@ async function alignReader(reader: Reader, portion: PortionData) {
       const first = idx[0], last = idx[idx.length - 1];
       const prevEnd = vi ? endMs[first - 1] : 0;
       const nextStart = vi + 1 < vs.length ? startMs[last + 1] : durationMs;
-      const vStart = Math.max(prevEnd, startMs[first] - 150);
-      const vEnd = Math.max(endMs[last], Math.min(nextStart - 20, endMs[last] + 300)); // never cut the last word
+      const vStart = Math.max(prevEnd, startMs[first] - 40);
+      const vEnd = Math.max(endMs[last], Math.min(nextStart - 10, endMs[last] + 50)); // tight acoustic end without trailing hum
       const heard = greedyDecode(lp, T, Math.floor(vStart / FRAME_MS), Math.ceil(vEnd / FRAME_MS));
       const cer = tolerantErrorRate(heard, v.words.map((w) => w.spoken));
       const conf = idx.map((i) => Math.exp(spans[i].score));

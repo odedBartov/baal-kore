@@ -2,7 +2,11 @@
 dependencies {
   // On-device CTC model for word checks (MIT). The model itself is an optional asset: npm run fetch-model.
   implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.31.0'
+  // Google Play In-App Billing SDK for ₪10 per-Parasha unlock (Aliyot 2–7).
+  implementation 'com.android.billingclient:billing:7.0.0'
 }
+
+def isAabBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains("bundle") }
 
 android {
   compileSdkVersion 36
@@ -13,8 +17,8 @@ android {
     targetSdkVersion 36
 
     // Version Information
-    versionCode 2
-    versionName "0.5.0"
+    versionCode 3
+    versionName "0.7.0"
 
     generatedDensities = []
 
@@ -27,5 +31,30 @@ android {
     additionalParameters "--no-version-vectors"
     // Stored, not deflated: the model is copied out by file descriptor, Ogg is already compressed.
     noCompress 'onnx', 'oga', 'ogg'
+    if (isAabBuild) {
+      // When building an .aab for Google Play, the 415 MB ONNX models are delivered via the :model_assets
+      // install-time Play Asset Delivery pack so the base module stays ~45 MB (well under the 200 MB limit).
+      ignoreAssetsPattern "models"
+    }
+  }
+
+  if (isAabBuild) {
+    assetPacks = [":model_assets"]
+  }
+}
+
+if (isAabBuild) {
+  // Point the install-time asset pack at the models/ folder so it isn't duplicated on disk.
+  tasks.matching { it.name.toLowerCase().contains("bundle") }.configureEach {
+    doFirst {
+      def srcModels = file("$rootDir/../../App_Resources/Android/src/main/assets/models")
+      def dstModels = file("$rootDir/../../App_Resources/Android/model_assets/src/main/assets/models")
+      if (srcModels.exists() && !dstModels.exists()) {
+        dstModels.parentFile.mkdirs()
+        ant.copy(todir: dstModels) {
+          fileset(dir: srcModels)
+        }
+      }
+    }
   }
 }

@@ -48,4 +48,42 @@ export interface PortionData {
   verses: VerseData[];
 }
 
+export type BookId = 'Genesis' | 'Exodus' | 'Leviticus' | 'Numbers' | 'Deuteronomy';
+
+export interface BookCatalogEntry {
+  id: BookId;
+  nameHe: string;
+  nameHePlain: string;
+  order: number;
+  portionIds: string[];
+  totalChapters: number;
+  totalVerses: number;
+}
+
+export interface AliyahCatalogEntry {
+  n: number;
+  from: string;
+  to: string;
+  rangeHe: string;
+  verseIds: string[];
+}
+
+export interface PortionCatalogEntry {
+  id: string;
+  nameHe: string;
+  book: BookId;
+  bookNameHe: string;
+  range: string;
+  rangeHe: string;
+  available: boolean;
+  totalVerses: number;
+  aliyot: AliyahCatalogEntry[];
+}
+
+export interface TorahCatalog {
+  schemaVersion: 1;
+  books: BookCatalogEntry[];
+  portions: PortionCatalogEntry[];
+}
+
 export const verseId = (book: string, chapter: number, verse: number) => `${book}.${chapter}.${verse}`;

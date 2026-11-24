@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, inject, signal } from '@angular/core';
 import { goBack } from '../core/navigation';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
-import { ContentService, hebrewNumber } from '../core/content.service';
+import { ContentService } from '../core/content.service';
 import {
   CHALLENGE_PRESETS,
+  computeCatalogPortionSummary,
   computeChallengeStatus,
-  computeParashaSummary,
   type DailyQuest,
 } from '../core/gamification';
 import { sendLocalReminderNotification } from '../core/notifications';
@@ -43,46 +43,46 @@ const TIER_LADDER = [
         <!-- Streak Hero Banner -->
         <GridLayout columns="auto, *" class="hero-card hero-streak">
           <StackLayout col="0" class="streak-badge-big" verticalAlignment="center">
-            <Label class="streak-num-big" [text]="'🔥 ' + store.progress().streakDays"></Label>
-            <Label class="streak-lbl-big" text="ימים ברצף"></Label>
+            <Label class="streak-num-big" textWrap="true" [text]="'🔥 ' + store.progress().streakDays"></Label>
+            <Label class="streak-lbl-big" textWrap="true" text="ימים ברצף"></Label>
           </StackLayout>
           <StackLayout col="1" verticalAlignment="center">
-            <Label class="card-title-gold" [text]="'שיא רצף אישי: ' + store.progress().bestStreak + ' ימים'"></Label>
+            <Label class="card-title-gold" textWrap="true" [text]="'שיא רצף אישי: ' + store.progress().bestStreak + ' ימים'"></Label>
             <Label class="body-light" textWrap="true" [text]="'מגיני הקפאת רצף זמינים: 🧊 ' + store.progress().streakFreezes"></Label>
             <Label class="meta-light" textWrap="true" text="כל יום של קריאה מגדיל את בונוס המטבעות שלכם עד +20 🪙 לכל פסוק!"></Label>
           </StackLayout>
         </GridLayout>
 
         <!-- Daily Quests -->
-        <Label class="section" text="🎯 משימות יומיות (מתאפסות כל יום)"></Label>
+        <Label class="section" textWrap="true" text="🎯 משימות יומיות (מתאפסות כל יום)"></Label>
         @for (q of store.dailyQuests(); track q.id) {
           <GridLayout columns="auto, *, auto" class="quest-card" [class.quest-done]="q.completed">
             <Label col="2" class="quest-icon" [text]="q.icon"></Label>
             <StackLayout col="1">
-              <Label class="quest-title" [text]="q.titleHe"></Label>
-              <Label class="meta" [text]="q.subtitleHe + ' (' + q.current + '/' + q.target + ')'"></Label>
+              <Label class="quest-title" textWrap="true" [text]="q.titleHe"></Label>
+              <Label class="meta" textWrap="true" [text]="q.subtitleHe + ' (' + q.current + '/' + q.target + ')'"></Label>
               <GridLayout class="meter" height="8">
                 <StackLayout class="meter-fill-gold" horizontalAlignment="right" [width]="(q.current / q.target) * 200"></StackLayout>
               </GridLayout>
             </StackLayout>
             <StackLayout col="0" verticalAlignment="center">
               @if (q.claimed) {
-                <Label class="quest-claimed" text="✓ נאסף"></Label>
+                <Label class="quest-claimed" textWrap="true" text="✓ נאסף"></Label>
               } @else if (q.completed) {
-                <Button class="btn-claim" [text]="'איסוף +' + q.rewardCoins + '🪙'" (tap)="claim(q)"></Button>
+                <Button class="btn-claim" textWrap="true" [text]="'איסוף +' + q.rewardCoins + '🪙'" (tap)="claim(q)"></Button>
               } @else {
-                <Label class="quest-reward" [text]="'+' + q.rewardCoins + ' 🪙'"></Label>
+                <Label class="quest-reward" textWrap="true" [text]="'+' + q.rewardCoins + ' 🪙'"></Label>
               }
             </StackLayout>
           </GridLayout>
         }
 
         <!-- Time-Span Parasha / Aliyah Challenge -->
-        <Label class="section" text="⏱️ אתגר זמן ללימוד הפרשה"></Label>
+        <Label class="section" textWrap="true" [text]="'⏱️ אתגר זמן ללימוד פרשת ' + activePortion().nameHe"></Label>
         @if (challengeStatus(); as cs) {
           <StackLayout class="challenge-active-card">
             <GridLayout columns="auto, *">
-              <Label col="0" class="badge-gold" [text]="cs.onTrack ? '✓ בקצב היעד!' : '⚡ הגבירו קצב'"></Label>
+              <Label col="0" class="badge-gold" textWrap="true" [text]="cs.onTrack ? '✓ בקצב היעד!' : '⚡ הגבירו קצב'"></Label>
               <Label col="1" class="card-title" [text]="cs.titleHe" textWrap="true"></Label>
             </GridLayout>
             <Label class="body" textWrap="true" [text]="'נותרו ' + cs.daysLeft + ' ימים · הושלמו ' + cs.doneTargetVerses + ' מתוך ' + cs.totalTargetVerses + ' פסוקים (' + cs.progressPct + '%)'"></Label>
@@ -97,38 +97,42 @@ const TIER_LADDER = [
 
         @for (p of presets; track p.id) {
           <GridLayout columns="auto, *" class="card preset-card" [class.preset-selected]="store.progress().challengePlan?.id === p.id">
-            <Button col="0" class="btn-small btn-primary" [text]="store.progress().challengePlan?.id === p.id ? 'פעיל ✓' : 'הפעלה'" (tap)="startPreset(p.id)"></Button>
+            <Button col="0" class="btn-small btn-primary" textWrap="true" [text]="store.progress().challengePlan?.id === p.id ? 'פעיל ✓' : 'הפעלה'" (tap)="startPreset(p.id)"></Button>
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="cat-name" [text]="p.titleHe"></Label>
-              <Label class="meta" [text]="'פרס סיום: +' + p.rewardCoins + ' 🪙 · +' + p.rewardXp + ' XP'"></Label>
+              <Label class="cat-name" textWrap="true" [text]="p.titleHe"></Label>
+              <Label class="meta" textWrap="true" [text]="'פרס סיום: +' + p.rewardCoins + ' 🪙 · +' + p.rewardXp + ' XP'"></Label>
             </StackLayout>
           </GridLayout>
         }
 
         <!-- Aliyah Boss Crowns -->
-        <Label class="section" text="👑 אתגר כתרי העליות (3 פסוקים עוברים ברצף)"></Label>
+        <Label class="section" textWrap="true" [text]="'👑 אתגר כתרי העליות בפרשת ' + activePortion().nameHe + ' (3 פסוקים עוברים ברצף)'"></Label>
         @for (a of summary().aliyot; track a.aliyah) {
           <GridLayout columns="auto, *, auto" class="card aliyah-boss-row" (tap)="openAliyah(a.aliyah)">
             <Label col="2" class="boss-crown-icon" [text]="a.hasCrown ? '👑' : '🛡️'"></Label>
             <StackLayout col="1">
-              <Label class="cat-name" [text]="a.nameHe + ' (' + a.rangeHe + ')'"></Label>
-              <Label class="meta" [text]="a.hasCrown ? 'כתר העלייה הושג! · ממוצע: ' + (a.averageScore ?? '—') : 'רצף הצלחות בעלייה: ' + a.bossStreak + '/3 · ממוצע: ' + (a.averageScore ?? 'טרם נבדק')"></Label>
+              <Label class="cat-name" textWrap="true" [text]="a.nameHe + ' (' + a.rangeHe + ')'"></Label>
+              <Label class="meta" textWrap="true" [text]="a.hasCrown ? 'כתר העלייה הושג! · ממוצע: ' + (a.averageScore ?? '—') : 'רצף הצלחות בעלייה: ' + a.bossStreak + '/3 · ממוצע: ' + (a.averageScore ?? 'טרם נבדק')"></Label>
             </StackLayout>
-            <Label col="0" class="badge" [class.badge-warn]="!a.hasCrown" [text]="a.doneVerses + '/' + a.totalVerses"></Label>
+            <Label col="0" class="badge" textWrap="true" [class.badge-warn]="!a.hasCrown" [text]="a.doneVerses + '/' + a.totalVerses"></Label>
           </GridLayout>
         }
 
         <!-- User Level & Rank Ladder -->
-        <Label class="section" text="🏆 סולם הדרגות של בעל קורא"></Label>
+        <Label class="section" textWrap="true" text="🏆 סולם הדרגות של בעל קורא"></Label>
         @for (t of tiers; track t.id) {
           <GridLayout columns="auto, *" class="card tier-row" [class.tier-current]="store.rank().tierId === t.id">
-            <Label col="1" class="cat-name" [text]="t.icon + ' ' + t.title + ' (' + t.levels + ')'"></Label>
-            <Label col="0" class="badge" [text]="store.rank().tierId === t.id ? 'הדרגה שלך כעת' : ''"></Label>
-            <Label col="1" class="meta" textWrap="true" [text]="t.desc" marginTop="24"></Label>
+            @if (store.rank().tierId === t.id) {
+              <Label col="0" class="badge" textWrap="true" verticalAlignment="center" text="הדרגה שלך כעת"></Label>
+            }
+            <StackLayout col="1" verticalAlignment="center">
+              <Label class="cat-name" textWrap="true" [text]="t.icon + ' ' + t.title + ' (' + t.levels + ')'"></Label>
+              <Label class="meta" textWrap="true" [text]="t.desc"></Label>
+            </StackLayout>
           </GridLayout>
         }
 
-        <Button class="btn" text="🔔 שליחת התראת תזכורת עכשיו (בדיקה)" (tap)="testNotification()"></Button>
+        <Button class="btn" textWrap="true" text="🔔 שליחת התראת תזכורת עכשיו (בדיקה)" (tap)="testNotification()"></Button>
       </StackLayout>
     </ScrollView>
   `,
@@ -145,7 +149,8 @@ export class ChallengesComponent {
   readonly tiers = TIER_LADDER;
   readonly banner = signal<string | null>(null);
 
-  readonly summary = computed(() => computeParashaSummary(this.content.verses, this.store.progress(), hebrewNumber));
+  readonly activePortion = computed(() => this.content.portionOfVerse(this.store.progress().currentVerseId));
+  readonly summary = computed(() => computeCatalogPortionSummary(this.activePortion(), this.store.progress()));
   readonly challengeStatus = computed(() => computeChallengeStatus(this.store.progress().challengePlan, this.summary()));
 
   claim(q: DailyQuest): void {
@@ -161,7 +166,7 @@ export class ChallengesComponent {
   }
 
   openAliyah(aliyah: number): void {
-    this.nav.navigate(['/portion', 'bereshit'], { queryParams: { aliyah } });
+    this.nav.navigate(['/portion', this.activePortion().id], { queryParams: { aliyah } });
   }
 
   testNotification(): void {

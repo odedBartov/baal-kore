@@ -24,7 +24,7 @@ function frame(expr: Expression, kind: '' | '-talk' | '-blink'): ImageSource {
           <Label class="rabbi-crown-top" text="👑"></Label>
         }
         <Image #img [src]="image()" [width]="size()" [height]="size()" stretch="aspectFit"></Image>
-        <Label class="rabbi-frame-badge" [text]="store.equippedFrameInfo().titleBadgeHe"></Label>
+        <Label class="rabbi-frame-badge" textWrap="true" [text]="store.equippedFrameInfo().titleBadgeHe"></Label>
       </StackLayout>
       @if (line()?.text) {
         <StackLayout #bubble col="0" class="bubble" verticalAlignment="center">

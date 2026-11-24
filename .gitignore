@@ -35,3 +35,10 @@ test-data/
 
 # Optional on-device model (npm run fetch-model), 365 MB
 App_Resources/Android/src/main/assets/models/
+App_Resources/Android/model_assets/src/main/assets/models/
+
+# Signing keystores & compiled bundles
+keystore/
+*.jks
+*.apk
+*.aab

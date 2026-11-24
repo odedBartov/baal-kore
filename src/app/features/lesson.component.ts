@@ -37,14 +37,14 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
       <StackLayout class="page">
         <gamification-bar [compact]="true"></gamification-bar>
         @if (unit(); as u) {
-          <Label class="meta" [text]="'שיעור ' + (index() + 1) + ' מתוך ' + units.length"></Label>
+          <Label class="meta" textWrap="true" [text]="'שיעור ' + (index() + 1) + ' מתוך ' + units.length"></Label>
           <rabbi [line]="line()"></rabbi>
           @for (t of u.newTaamim; track t) {
             <GridLayout columns="*, auto" class="card taam-card">
-              <Label col="1" class="taam-symbol" [text]="symbol(t)"></Label>
+              <Label col="1" class="taam-symbol" textWrap="true" [text]="symbol(t)"></Label>
               <StackLayout col="0">
-                <Label class="card-title" [text]="def(t).nameHe"></Label>
-                <Label class="tag" [text]="def(t).kind === 'disjunctive' ? 'מפסיק – עוצר את הקריאה' : 'משרת – מחבר למילה הבאה'"></Label>
+                <Label class="card-title" textWrap="true" [text]="def(t).nameHe"></Label>
+                <Label class="tag" textWrap="true" [text]="def(t).kind === 'disjunctive' ? 'מפסיק – עוצר את הקריאה' : 'משרת – מחבר למילה הבאה'"></Label>
                 <Label class="body" textWrap="true" [text]="def(t).explanationHe"></Label>
               </StackLayout>
             </GridLayout>
@@ -61,11 +61,11 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
           }
           @if (!ref) {
             <Label class="error" textWrap="true" text="אין הקלטת קורא לפסוק הזה, ולכן אי אפשר להשמיע דוגמה או לבדוק את השירה."></Label>
-            <Button class="btn btn-primary" text="המשך לפסוק" (tap)="finish()"></Button>
+            <Button class="btn btn-primary" textWrap="true" text="המשך לפסוק" (tap)="finish()"></Button>
           } @else {
             <GridLayout columns="*, *" class="buttons">
-              <Button col="1" class="btn" [text]="playback.playing() === 'demo' ? 'עצירה' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
-              <Button col="0" class="btn btn-record" [text]="rec.active() ? 'סיום' : 'הקלטה'" (tap)="record()" [isEnabled]="heard() && !busy()"></Button>
+              <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'demo' ? 'עצירה' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
+              <Button col="0" class="btn btn-record" textWrap="true" [text]="rec.active() ? 'סיום' : 'הקלטה'" (tap)="record()" [isEnabled]="heard() && !busy()"></Button>
             </GridLayout>
             @if (rec.active()) {
               <GridLayout class="meter" height="12"><StackLayout class="meter-fill" horizontalAlignment="right" [width]="meter()"></StackLayout></GridLayout>
@@ -76,26 +76,26 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
             @if (check(); as c) {
               @if (lessonReward(); as rw) {
                 <StackLayout class="reward-card">
-                  <Label class="effort-rank-title" [text]="rw.badgeIcon + ' רמת ביצוע: ' + rw.titleHe + ' ' + '⭐'.repeat(rw.stars)"></Label>
+                  <Label class="effort-rank-title" textWrap="true" [text]="rw.badgeIcon + ' רמת ביצוע: ' + rw.titleHe + ' ' + '⭐'.repeat(rw.stars)"></Label>
                   <FlexboxLayout flexDirection="row" flexWrap="wrap" justifyContent="space-around">
-                    <Label class="reward-pill reward-pill-xp" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
-                    <Label class="reward-pill reward-pill-coins" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
+                    <Label class="reward-pill reward-pill-xp" textWrap="true" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
+                    <Label class="reward-pill reward-pill-coins" textWrap="true" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
                   </FlexboxLayout>
                 </StackLayout>
               }
               @if (c.deviation !== null) {
-                <Label class="meta" [text]="'סטייה מהמנגינה: ' + c.deviation.toFixed(1) + ' חצאי טון (הסף: ' + maxDev.toFixed(2) + ')'"></Label>
+                <Label class="meta" textWrap="true" [text]="'סטייה מהמנגינה: ' + c.deviation.toFixed(1) + ' חצאי טון (הסף: ' + maxDev.toFixed(2) + ')'"></Label>
               }
               @if (c.status === 'passed' || (c.status === 'failed' && c.wordsHeard !== false && c.deviation !== null && c.deviation <= maxDev)) {
-                <Button class="btn btn-primary btn-cta" [text]="index() + 1 < units.length ? '▶ לשיעור הבא' : '▶ לקריאת הפסוק'" (tap)="next()"></Button>
+                <Button class="btn btn-primary btn-cta" textWrap="true" [text]="index() + 1 < units.length ? '▶ לשיעור הבא' : '▶ לקריאת הפסוק'" (tap)="next()"></Button>
               }
-              <Button class="btn" [text]="playback.playing() === 'mine' ? 'עצירה' : 'האזנה להקלטה שלי'" (tap)="playMine()"></Button>
+              <Button class="btn" textWrap="true" [text]="playback.playing() === 'mine' ? 'עצירה' : 'האזנה להקלטה שלי'" (tap)="playMine()"></Button>
             }
           }
           @if (error()) {
             <Label class="error" textWrap="true" [text]="error()"></Label>
           }
-          <Label class="note" textWrap="true" text="הבדיקה בשיעור ניסיונית. ההקלטה לדוגמה היא של קורא אמיתי וממתינה לאישור מומחה."></Label>
+          <Label class="note" textWrap="true" text="האזינו לקורא וחזרו על הצירוף בקול ברור לפי מנגינת הטעמים."></Label>
         }
       </StackLayout>
     </ScrollView>
@@ -103,10 +103,6 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 })
 export class LessonComponent implements OnDestroy {
   private nav = inject(RouterExtensions);
-
-  goBack(): void {
-    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
-  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -122,7 +118,12 @@ export class LessonComponent implements OnDestroy {
   }
 
   readonly verse = this.content.verse(this.route.snapshot.params['verseId'])!;
+  readonly portionMeta = this.content.portionOfVerse(this.verse.id);
   readonly ref = this.content.referenceFor(this.verse.id);
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', this.portionMeta.id], { aliyah: this.verse.aliyah });
+  }
   private readonly review: string | undefined = this.route.snapshot.queryParams['taam'];
   readonly units: LessonUnit[] = this.review
     ? this.verse.groups.map((g, gi) => ({ g, gi })).filter(({ g }) => g.words.some((w) => this.verse.words[w].taamim.includes(this.review!))).slice(0, 1)
@@ -141,7 +142,9 @@ export class LessonComponent implements OnDestroy {
   private readonly mine = this.audio.scratchWav('lesson');
 
   readonly segment = computed(() => this.clip() ?? { startMs: 0, endMs: 1 });
-  readonly segmentWordStarts = computed(() => (this.unit()?.wordIndexes ?? []).map((w) => this.ref!.words[w].startMs - this.segment().startMs));
+  readonly segmentWordStarts = computed(() =>
+    (this.unit()?.wordIndexes ?? []).map((w, idx) => (idx === 0 ? 0 : Math.max(0, this.ref!.words[w].startMs - this.segment().startMs))),
+  );
   readonly unitWords = computed(() => (this.unit()?.wordIndexes ?? []).map((w) => stripAccents(this.verse.words[w].text)));
   readonly activeWordInUnit = computed(() => {
     const w = this.activeWord(), u = this.unit();
@@ -154,11 +157,11 @@ export class LessonComponent implements OnDestroy {
     return k === null ? null : u.wordIndexes[k];
   });
   readonly chart = computed<ChartSeries[]>(() => {
-    const c = this.refContour(), s = this.segment(), chk = this.check();
-    // After a check, both lines come from it so they share one scale (the phrase's own centre, key removed).
+    const c = this.refContour(), chk = this.check();
+    // Both before and after a check, the reference contour comes from the exact phrase clip (same median, zero shift).
     if (chk?.studentOnReference.some((v) => v !== null))
       return [{ points: chk.reference, color: '#2f6fd0', lane: true, label: 'הקורא' }, { points: chk.studentOnReference, color: '#e07b00', label: 'אתם' }];
-    return c ? [{ points: c.semitones.slice(Math.floor(s.startMs / 10), Math.ceil(s.endMs / 10)), color: '#2f6fd0', lane: true }] : [];
+    return c ? [{ points: c.semitones, color: '#2f6fd0', lane: true }] : [];
   });
   readonly mineChart = computed<ChartSeries[]>(() => {
     const chk = this.check();
@@ -167,17 +170,15 @@ export class LessonComponent implements OnDestroy {
   });
 
   constructor() {
+    if (!this.store.isAliyahAccessible(this.portionMeta.id, this.verse.aliyah)) {
+      setTimeout(() => this.nav.navigate(['/portion', this.portionMeta.id], { replaceUrl: true, queryParams: { aliyah: this.verse.aliyah } }));
+      return;
+    }
     if (!this.units.length) {
       setTimeout(() => this.finish());
       return;
     }
     this.intro();
-    if (this.ref)
-      this.audio
-        .referenceWav(this.verse.id, this.ref)
-        .then((master) => this.audio.contour(master))
-        .then((c) => this.refContour.set(c))
-        .catch((e) => this.error.set(`לא הצלחתי להכין את הדוגמה: ${e}`));
   }
 
   meter(): number {
@@ -202,10 +203,18 @@ export class LessonComponent implements OnDestroy {
     this.lessonReward.set(null);
     this.line.set(rabbiSays({ kind: 'lesson-intro', newTaamim: u.newTaamim, words: u.wordIndexes.map((w) => this.verse.words[w].text).join(' ') }));
     this.clip.set(null);
+    this.refContour.set(null);
     if (this.ref)
       this.audio
         .phraseClip(this.verse.id, this.ref, u.wordIndexes[0], u.wordIndexes[u.wordIndexes.length - 1])
-        .then((c) => this.unit() === u && this.clip.set(c))
+        .then(async (c) => {
+          if (this.unit() !== u) return;
+          const contour = await this.audio.contour(c.path);
+          if (this.unit() === u) {
+            this.clip.set(c);
+            this.refContour.set(contour);
+          }
+        })
         .catch((e) => this.error.set(`לא הצלחתי להכין את הדוגמה: ${e}`));
   }
 

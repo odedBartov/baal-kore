@@ -101,7 +101,7 @@ export interface WordTaamim {
 /**
  * Context rules (the same symbol does not always mean the same thing):
  *  - duplicated postpositive marks (MAM adds a copy on the stressed syllable) count once;
- *  - meteg on the verse's last word is silluq → sof pasuk; elsewhere it is not a ta'am;
+ *  - meteg/sof-pasuk on the verse's last word is silluq → sof pasuk (even in dual-ta'am verses like the Decalogue); elsewhere meteg is not a ta'am;
  *  - munach followed by a legarmeh stroke is munach legarmeh, a disjunctive;
  *  - a word with no accent belongs to the next word's ta'am (maqaf).
  */
@@ -111,12 +111,12 @@ export function resolveWordTaamim(word: string, opts: { lastInVerse: boolean; le
     const id = taamIdOf(cp);
     if (id && !ids.includes(id)) ids.push(id);
   }
-  if (opts.lastInVerse && word.includes(METEG) && !ids.some((i) => TAAM_BY_ID[i].kind === 'disjunctive')) ids.push('sof-pasuk');
+  if (opts.lastInVerse && (word.includes(METEG) || word.endsWith('׃'))) ids.push('sof-pasuk');
   if (opts.legarmeh) {
     const k = ids.indexOf('munach');
     if (k >= 0) ids[k] = 'munach-legarmeh';
   }
-  const primary = ids.find((i) => TAAM_BY_ID[i].kind === 'disjunctive') ?? ids[0] ?? null;
+  const primary = (opts.lastInVerse && ids.includes('sof-pasuk') ? 'sof-pasuk' : null) ?? ids.find((i) => TAAM_BY_ID[i].kind === 'disjunctive') ?? ids[0] ?? null;
   return { taamim: ids, primary };
 }
 

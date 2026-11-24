@@ -1,4 +1,4 @@
-package il.co.infraedge.torahtutor;
+package com.baalkore.app;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;

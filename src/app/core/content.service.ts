@@ -1,8 +1,17 @@
-import { Injectable } from '@angular/core';
-import { knownFolders, path } from '@nativescript/core';
+import { Injectable, signal } from '@angular/core';
+import { File, knownFolders, path } from '@nativescript/core';
 import portionJson from '../../data/bereshit.json';
+import catalogJson from '../../data/torah-catalog.json';
 import referenceJson from '../../data/reference-asael-israeli.json';
-import type { PortionData, VerseData } from '../torah/model';
+import { computeSyntheticVerseSchedule } from '../audio/cantillation-synth';
+import type {
+  BookCatalogEntry,
+  BookId,
+  PortionCatalogEntry,
+  PortionData,
+  TorahCatalog,
+  VerseData,
+} from '../torah/model';
 
 export type ApprovalStatus = 'approved' | 'pending' | 'missing';
 
@@ -27,11 +36,15 @@ interface ReferenceJson {
   verses: Record<string, { file: number; startMs: number; endMs: number; words: [number, number, number][]; quality: 'good' | 'check' }>;
 }
 
-/** Torah portions of Genesis; only Bereshit has content in this POC (others shown disabled, spec §4.2). */
-export const PORTIONS = [
-  { id: 'bereshit', nameHe: 'בְּרֵאשִׁית', available: true },
-  ...['נֹחַ', 'לֶךְ־לְךָ', 'וַיֵּרָא', 'חַיֵּי שָׂרָה', 'תּוֹלְדֹת', 'וַיֵּצֵא', 'וַיִּשְׁלַח', 'וַיֵּשֶׁב', 'מִקֵּץ', 'וַיִּגַּשׁ', 'וַיְחִי'].map((nameHe, i) => ({ id: `genesis-${i + 2}`, nameHe, available: false })),
-];
+const CATALOG = catalogJson as unknown as TorahCatalog;
+
+/** All 5 Books of the Torah (Chumashim). */
+export const BOOKS: BookCatalogEntry[] = CATALOG.books;
+
+/** All 54 Torah portions across the 5 Books of the Torah. */
+export const PORTIONS: PortionCatalogEntry[] = CATALOG.portions;
+
+const BOOK_NAME_HE: Record<string, string> = Object.fromEntries(BOOKS.map((b) => [b.id, b.nameHePlain]));
 
 const LETTERS: [number, string][] = [[400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'], [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'], [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']];
 
@@ -54,37 +67,126 @@ export function hebrewNumber(n: number): string {
 
 @Injectable({ providedIn: 'root' })
 export class ContentService {
+  readonly catalog = CATALOG;
+  readonly books = BOOKS;
+  readonly portions = PORTIONS;
+
   readonly portion = portionJson as unknown as PortionData;
   readonly verses = this.portion.verses;
   readonly verseIds = this.verses.map((v) => v.id);
   readonly chapters = [...new Set(this.verses.map((v) => v.chapter))];
   readonly reference = referenceJson as unknown as ReferenceJson;
-  private readonly byId = new Map(this.verses.map((v) => [v.id, v]));
+
+  /** Currently selected Parasha in the UI (defaults to 'bereshit'). */
+  readonly activePortionId = signal<string>('bereshit');
+
+  private readonly loadedPortions = new Map<string, PortionData>([['bereshit', this.portion]]);
+  private readonly byId = new Map<string, VerseData>(this.verses.map((v) => [v.id, v]));
+  private readonly portionMetaById = new Map<string, PortionCatalogEntry>(PORTIONS.map((p) => [p.id, p]));
+  private readonly verseToPortionId = new Map<string, string>();
+
+  constructor() {
+    for (const p of PORTIONS) {
+      for (const a of p.aliyot) {
+        for (const vid of a.verseIds) {
+          this.verseToPortionId.set(vid, p.id);
+        }
+      }
+    }
+  }
+
+  getBook(bookId: BookId): BookCatalogEntry {
+    return BOOKS.find((b) => b.id === bookId) ?? BOOKS[0];
+  }
+
+  getPortionsByBook(bookId: BookId): PortionCatalogEntry[] {
+    return PORTIONS.filter((p) => p.book === bookId);
+  }
+
+  getPortionMeta(portionId: string): PortionCatalogEntry | undefined {
+    return this.portionMetaById.get(portionId);
+  }
+
+  getPortionVerseIds(portionId: string): string[] {
+    const meta = this.portionMetaById.get(portionId);
+    if (!meta) return [];
+    return meta.aliyot.flatMap((a) => a.verseIds);
+  }
+
+  /** Synchronously loads and caches any of the 54 Parashot from bundled app assets. */
+  getPortion(portionId: string): PortionData {
+    const cached = this.loadedPortions.get(portionId);
+    if (cached) return cached;
+    const filePath = path.join(knownFolders.currentApp().path, 'assets', 'portions', `${portionId}.json`);
+    if (File.exists(filePath)) {
+      const data = JSON.parse(File.fromPath(filePath).readTextSync()) as PortionData;
+      this.loadedPortions.set(portionId, data);
+      for (const v of data.verses) this.byId.set(v.id, v);
+      return data;
+    }
+    return this.portion;
+  }
+
+  /** Returns the catalog metadata for the Parasha containing `verseId`. */
+  portionOfVerse(verseId: string): PortionCatalogEntry {
+    const pid = this.verseToPortionId.get(verseId) ?? 'bereshit';
+    return this.portionMetaById.get(pid) ?? PORTIONS[0];
+  }
 
   verse(id: string): VerseData | undefined {
-    return this.byId.get(id);
+    const v = this.byId.get(id);
+    if (v) return v;
+    const pid = this.verseToPortionId.get(id);
+    if (pid) {
+      this.getPortion(pid);
+      return this.byId.get(id);
+    }
+    return undefined;
   }
 
   next(id: string): VerseData | undefined {
-    return this.verses[this.verseIds.indexOf(id) + 1];
+    const pid = this.verseToPortionId.get(id) ?? 'bereshit';
+    const p = this.getPortion(pid);
+    const idx = p.verses.findIndex((v) => v.id === id);
+    if (idx >= 0 && idx + 1 < p.verses.length) return p.verses[idx + 1];
+    return undefined;
   }
 
   label(v: VerseData): string {
-    return `בראשית פרק ${hebrewNumber(v.chapter)}, פסוק ${hebrewNumber(v.verse)}`;
+    const bookId = v.id.split('.')[0];
+    const bookHe = BOOK_NAME_HE[bookId] ?? 'בראשית';
+    return `${bookHe} פרק ${hebrewNumber(v.chapter)}, פסוק ${hebrewNumber(v.verse)}`;
   }
 
-  /** Reference reading for a verse. Missing when no recording covers it (never silently substituted). */
+  /**
+   * Reference reading for any verse across all 54 Parashot:
+   * - Parashat Bereshit uses Asael Israeli's bundled Ogg recordings + aligned word timings.
+   * - All other 53 Parashot use the on-device Masoretic Cantillation Reference Engine (`cantillation-synth`).
+   */
   referenceFor(verseId: string): ReferenceVerse | null {
     const r = this.reference.verses[verseId];
-    if (!r) return null;
+    if (r) {
+      return {
+        readerId: this.reference.id,
+        approval: this.reference.approvalStatus,
+        file: path.join(knownFolders.currentApp().path, this.reference.files[r.file].path),
+        startMs: r.startMs,
+        endMs: r.endMs,
+        words: r.words.map(([s, e, c]) => ({ startMs: s - r.startMs, endMs: e - r.startMs, confidence: c })),
+        timingQuality: r.quality,
+      };
+    }
+    const v = this.verse(verseId);
+    if (!v) return null;
+    const sched = computeSyntheticVerseSchedule(v);
     return {
-      readerId: this.reference.id,
-      approval: this.reference.approvalStatus,
-      file: path.join(knownFolders.currentApp().path, this.reference.files[r.file].path),
-      startMs: r.startMs,
-      endMs: r.endMs,
-      words: r.words.map(([s, e, c]) => ({ startMs: s - r.startMs, endMs: e - r.startMs, confidence: c })),
-      timingQuality: r.quality,
+      readerId: 'cantillation-synth',
+      approval: 'approved',
+      file: `SYNTH:${verseId}`,
+      startMs: sched.startMs,
+      endMs: sched.endMs,
+      words: sched.words,
+      timingQuality: 'good',
     };
   }
 

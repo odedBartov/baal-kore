@@ -1,8 +1,17 @@
 // Pure TypeScript gamification engine: user ranks/levels, per-effort ratings, streaks, daily quests,
 // time-span challenges, shop catalog, and Aliyah/Parasha average grade analytics.
 import type { Category } from '../analysis/types';
-import type { VerseData } from '../torah/model';
-import type { ChallengePlan, RabbiFrame, StudentProgress, YadStyle } from './state';
+import type { PortionCatalogEntry, VerseData } from '../torah/model';
+import {
+  isAliyahAccessible,
+  isPortionPurchased,
+  PARASHA_PRICE_LABEL_HE,
+  playProductIdForPortion,
+  type ChallengePlan,
+  type RabbiFrame,
+  type StudentProgress,
+  type YadStyle,
+} from './state';
 export type { ChallengePlan, RabbiFrame, YadStyle } from './state';
 
 export interface UserRankInfo {
@@ -54,9 +63,15 @@ export interface AliyahSummary {
   hasCrown: boolean;
   bossStreak: number;
   allUnlocked: boolean;
+  isFree: boolean;
+  isPaywalled: boolean;
 }
 
 export interface ParashaSummary {
+  portionId: string;
+  productId: string;
+  isPurchased: boolean;
+  priceLabelHe: string;
   totalVerses: number;
   doneVerses: number;
   completedVerses: number;
@@ -107,7 +122,7 @@ export const FRAME_CATALOG: { id: RabbiFrame; nameHe: string; titleBadgeHe: stri
 
 export const CHALLENGE_PRESETS: Omit<ChallengePlan, 'startedAt' | 'completed'>[] = [
   { id: 'aliyah-3d', titleHe: 'אתגר בזק: עלייה ב־3 ימים', targetDays: 3, targetType: 'aliyah', rewardCoins: 60, rewardXp: 150 },
-  { id: 'parasha-7d', titleHe: 'מרתון פרשת בראשית ב־7 ימים', targetDays: 7, targetType: 'parasha', rewardCoins: 250, rewardXp: 600 },
+  { id: 'parasha-7d', titleHe: 'מרתון הפרשה ב־7 ימים', targetDays: 7, targetType: 'parasha', rewardCoins: 250, rewardXp: 600 },
   { id: 'parasha-14d', titleHe: 'אתגר שבועיים: כל הפרשה ב־14 ימים', targetDays: 14, targetType: 'parasha', rewardCoins: 180, rewardXp: 450 },
   { id: 'parasha-30d', titleHe: 'מסלול בר־מצווה: פרשה ב־30 ימים', targetDays: 30, targetType: 'parasha', rewardCoins: 150, rewardXp: 400 },
 ];
@@ -402,92 +417,161 @@ export function getDailyQuests(p: StudentProgress, today = todayIso()): DailyQue
   ];
 }
 
+function scoreForVerseId(id: string, p: StudentProgress): number | null {
+  if (typeof p.bestScores[id] === 'number') return p.bestScores[id];
+  const last = p.lastAttempts[id];
+  if (last && typeof last.overallScore === 'number') return last.overallScore;
+  if (last) {
+    const valid = last.categories.map((c) => c.score).filter((s): s is number => typeof s === 'number');
+    if (valid.length) return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+  }
+  return null;
+}
+
+function categoryAvgForVerseIds(verseIds: string[], p: StudentProgress): Partial<Record<Category, number>> {
+  const sums: Partial<Record<Category, { sum: number; count: number }>> = {};
+  for (const vid of verseIds) {
+    const last = p.lastAttempts[vid];
+    if (!last) continue;
+    for (const c of last.categories) {
+      if (typeof c.score === 'number') {
+        const cur = sums[c.category] ?? { sum: 0, count: 0 };
+        cur.sum += c.score;
+        cur.count += 1;
+        sums[c.category] = cur;
+      }
+    }
+  }
+  const out: Partial<Record<Category, number>> = {};
+  for (const [k, v] of Object.entries(sums)) {
+    if (v && v.count > 0) out[k as Category] = Math.round(v.sum / v.count);
+  }
+  return out;
+}
+
+/** Computes average grades and mastery for any Parasha directly from its catalog metadata (no file load needed). */
+export function computeCatalogPortionSummary(meta: PortionCatalogEntry, p: StudentProgress): ParashaSummary {
+  const doneSet = new Set([...p.completedVerseIds, ...p.practicedVerseIds]);
+  const purchased = isPortionPurchased(meta.id, p);
+
+  const aliyot: AliyahSummary[] = meta.aliyot.map((a) => {
+    const vids = a.verseIds;
+    const doneVerses = vids.filter((vid) => doneSet.has(vid)).length;
+    const completedVerses = vids.filter((vid) => p.completedVerseIds.includes(vid)).length;
+    const scores = vids.map((vid) => scoreForVerseId(vid, p)).filter((s): s is number => s !== null);
+    const averageScore = scores.length ? Math.round(scores.reduce((x, y) => x + y, 0) / scores.length) : null;
+    const rank = gradeRankForScore(averageScore);
+    const accessible = isAliyahAccessible(meta.id, a.n, p);
+
+    return {
+      aliyah: a.n,
+      nameHe: ALIYAH_NAMES_HE[a.n]?.full ?? `עלייה ${a.n}`,
+      shortNameHe: ALIYAH_NAMES_HE[a.n]?.short ?? `${a.n}`,
+      rangeHe: `פרק ${a.rangeHe}`,
+      verseIds: vids,
+      totalVerses: vids.length,
+      doneVerses,
+      completedVerses,
+      progressPct: vids.length ? Math.round((doneVerses / vids.length) * 100) : 0,
+      averageScore,
+      categoryAverages: categoryAvgForVerseIds(vids, p),
+      levelTitleHe: averageScore !== null ? rank.titleHe : 'טרם נבדק',
+      levelIcon: averageScore !== null ? rank.icon : '📖',
+      hasCrown: p.aliyahCrowns.includes(a.n),
+      bossStreak: Math.min(3, p.aliyahBossStreak[String(a.n)] ?? 0),
+      allUnlocked: accessible,
+      isFree: a.n === 1,
+      isPaywalled: !accessible,
+    };
+  });
+
+  const allVerseIds = meta.aliyot.flatMap((a) => a.verseIds);
+  const allScores = allVerseIds.map((vid) => scoreForVerseId(vid, p)).filter((s): s is number => s !== null);
+  const averageScore = allScores.length ? Math.round(allScores.reduce((x, y) => x + y, 0) / allScores.length) : null;
+  const doneVerses = allVerseIds.filter((vid) => doneSet.has(vid)).length;
+  const completedVerses = allVerseIds.filter((vid) => p.completedVerseIds.includes(vid)).length;
+  const rank = gradeRankForScore(averageScore);
+
+  return {
+    portionId: meta.id,
+    productId: playProductIdForPortion(meta.id),
+    isPurchased: purchased,
+    priceLabelHe: PARASHA_PRICE_LABEL_HE,
+    totalVerses: allVerseIds.length,
+    doneVerses,
+    completedVerses,
+    progressPct: allVerseIds.length ? Math.round((doneVerses / allVerseIds.length) * 100) : 0,
+    averageScore,
+    categoryAverages: categoryAvgForVerseIds(allVerseIds, p),
+    levelTitleHe: averageScore !== null ? rank.titleHe : 'מתחיל בפרשה',
+    levelIcon: averageScore !== null ? rank.icon : '🌱',
+    aliyot,
+  };
+}
+
 /** Computes average grades and mastery for each of the 7 Aliyot and for the entire Parasha. */
 export function computeParashaSummary(
   verses: VerseData[],
   p: StudentProgress,
   hebrewNum: (n: number) => string,
+  portionId = 'bereshit',
 ): ParashaSummary {
   const doneSet = new Set([...p.completedVerseIds, ...p.practicedVerseIds]);
-  const unlockedSet = new Set(p.unlockedVerseIds ?? []);
-
-  const scoreForVerse = (id: string): number | null => {
-    if (typeof p.bestScores[id] === 'number') return p.bestScores[id];
-    const last = p.lastAttempts[id];
-    if (last && typeof last.overallScore === 'number') return last.overallScore;
-    if (last) {
-      const valid = last.categories.map((c) => c.score).filter((s): s is number => typeof s === 'number');
-      if (valid.length) return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
-    }
-    return null;
-  };
-
-  const categoryAvgForVerses = (vs: VerseData[]): Partial<Record<Category, number>> => {
-    const sums: Partial<Record<Category, { sum: number; count: number }>> = {};
-    for (const v of vs) {
-      const last = p.lastAttempts[v.id];
-      if (!last) continue;
-      for (const c of last.categories) {
-        if (typeof c.score === 'number') {
-          const cur = sums[c.category] ?? { sum: 0, count: 0 };
-          cur.sum += c.score;
-          cur.count += 1;
-          sums[c.category] = cur;
-        }
-      }
-    }
-    const out: Partial<Record<Category, number>> = {};
-    for (const [k, v] of Object.entries(sums)) {
-      if (v && v.count > 0) out[k as Category] = Math.round(v.sum / v.count);
-    }
-    return out;
-  };
+  const purchased = isPortionPurchased(portionId, p);
 
   const aliyot: AliyahSummary[] = [1, 2, 3, 4, 5, 6, 7].map((a) => {
     const av = verses.filter((v) => v.aliyah === a);
     const first = av[0];
     const last = av[av.length - 1];
     const rangeHe = first && last ? `פרק ${hebrewNum(first.chapter)}:${hebrewNum(first.verse)} – ${hebrewNum(last.chapter)}:${hebrewNum(last.verse)}` : '';
+    const vids = av.map((v) => v.id);
     const doneVerses = av.filter((v) => doneSet.has(v.id)).length;
     const completedVerses = av.filter((v) => p.completedVerseIds.includes(v.id)).length;
-    const scores = av.map((v) => scoreForVerse(v.id)).filter((s): s is number => s !== null);
+    const scores = av.map((v) => scoreForVerseId(v.id, p)).filter((s): s is number => s !== null);
     const averageScore = scores.length ? Math.round(scores.reduce((x, y) => x + y, 0) / scores.length) : null;
     const rank = gradeRankForScore(averageScore);
-    const allUnlocked = av.every((v, idx) => idx === 0 && a === 1 ? true : doneSet.has(v.id) || unlockedSet.has(v.id));
+    const accessible = isAliyahAccessible(portionId, a, p);
 
     return {
       aliyah: a,
       nameHe: ALIYAH_NAMES_HE[a]?.full ?? `עלייה ${a}`,
       shortNameHe: ALIYAH_NAMES_HE[a]?.short ?? `${a}`,
       rangeHe,
-      verseIds: av.map((v) => v.id),
+      verseIds: vids,
       totalVerses: av.length,
       doneVerses,
       completedVerses,
       progressPct: av.length ? Math.round((doneVerses / av.length) * 100) : 0,
       averageScore,
-      categoryAverages: categoryAvgForVerses(av),
+      categoryAverages: categoryAvgForVerseIds(vids, p),
       levelTitleHe: averageScore !== null ? rank.titleHe : 'טרם נבדק',
       levelIcon: averageScore !== null ? rank.icon : '📖',
       hasCrown: p.aliyahCrowns.includes(a),
       bossStreak: Math.min(3, p.aliyahBossStreak[String(a)] ?? 0),
-      allUnlocked,
+      allUnlocked: accessible,
+      isFree: a === 1,
+      isPaywalled: !accessible,
     };
   });
 
-  const allScores = verses.map((v) => scoreForVerse(v.id)).filter((s): s is number => s !== null);
+  const allVerseIds = verses.map((v) => v.id);
+  const allScores = verses.map((v) => scoreForVerseId(v.id, p)).filter((s): s is number => s !== null);
   const averageScore = allScores.length ? Math.round(allScores.reduce((x, y) => x + y, 0) / allScores.length) : null;
   const doneVerses = verses.filter((v) => doneSet.has(v.id)).length;
   const completedVerses = verses.filter((v) => p.completedVerseIds.includes(v.id)).length;
   const rank = gradeRankForScore(averageScore);
 
   return {
+    portionId,
+    productId: playProductIdForPortion(portionId),
+    isPurchased: purchased,
+    priceLabelHe: PARASHA_PRICE_LABEL_HE,
     totalVerses: verses.length,
     doneVerses,
     completedVerses,
     progressPct: verses.length ? Math.round((doneVerses / verses.length) * 100) : 0,
     averageScore,
-    categoryAverages: categoryAvgForVerses(verses),
+    categoryAverages: categoryAvgForVerseIds(allVerseIds, p),
     levelTitleHe: averageScore !== null ? rank.titleHe : 'מתחיל בפרשה',
     levelIcon: averageScore !== null ? rank.icon : '🌱',
     aliyot,
@@ -527,7 +611,7 @@ export function computeChallengeStatus(
     active: true,
     titleHe: plan.titleHe,
     daysElapsed: elapsed,
-    daysLeft,
+    daysLeft: Math.max(0, plan.targetDays - elapsed),
     totalTargetVerses,
     doneTargetVerses,
     remainingVerses,

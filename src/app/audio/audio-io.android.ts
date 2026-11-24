@@ -1,6 +1,6 @@
 import { Application, Utils } from '@nativescript/core';
 
-declare const il: { co: { infraedge: { torahtutor: { PcmRecorder: new (sampleRate: number) => PcmRecorderNative } } } };
+declare const com: { baalkore: { app: { PcmRecorder: new (sampleRate: number) => PcmRecorderNative } } };
 interface PcmRecorderNative {
   start(path: string): void;
   stop(): number;
@@ -33,7 +33,7 @@ export function requestMicPermission(): Promise<boolean> {
 }
 
 export class Recorder {
-  private native = new il.co.infraedge.torahtutor.PcmRecorder(RECORDING_SAMPLE_RATE);
+  private native = new com.baalkore.app.PcmRecorder(RECORDING_SAMPLE_RATE);
 
   start(wavPath: string): void {
     this.native.start(wavPath);

@@ -59,10 +59,17 @@ export class AudioService {
     return Promise.all([knownFolders.documents().getFolder('recordings').clear(), knownFolders.temp().getFolder('recordings').clear()]).then(() => undefined);
   }
 
-  /** The verse's segment of the original reference recording, decoded once to WAV. */
+  /** The verse's segment of the original reference recording (or on-device Masoretic cantillation synthesis), decoded once to WAV. */
   async referenceWav(verseId: string, ref: ReferenceVerse): Promise<string> {
-    const dst = path.join(this.folder(knownFolders.temp(), 'reference', ref.readerId), `${verseId}.wav`);
-    if (!File.exists(dst)) await this.run({ type: 'decode', src: ref.file, dst, startMs: ref.startMs, endMs: ref.endMs });
+    const dst = path.join(this.folder(knownFolders.temp(), 'reference-v3', ref.readerId), `${verseId}.wav`);
+    if (!File.exists(dst)) {
+      if (ref.file.startsWith('SYNTH:')) {
+        const verse = this.content.verse(verseId)!;
+        await this.run({ type: 'synth-reference', dst, verse });
+      } else {
+        await this.run({ type: 'decode', src: ref.file, dst, startMs: ref.startMs, endMs: ref.endMs });
+      }
+    }
     return dst;
   }
 

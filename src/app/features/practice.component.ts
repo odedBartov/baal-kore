@@ -40,29 +40,29 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
           <Label class="note" textWrap="true" [text]="'הערת נוסח: ' + verse.notes.join(' ')"></Label>
         }
         <FlexboxLayout class="badges" flexDirection="row" flexWrap="wrap">
-          <Label class="badge-gold" [text]="aliyahName"></Label>
-          <Label class="badge" [class.badge-warn]="cov.reference !== 'approved'" [text]="refBadge"></Label>
+          <Label class="badge-gold" textWrap="true" [text]="'פרשת ' + portionMeta.nameHe + ' · ' + aliyahName"></Label>
+          <Label class="badge" textWrap="true" [class.badge-warn]="cov.reference !== 'approved'" [text]="refBadge"></Label>
           @if (cov.timing === 'check') {
-            <Label class="badge badge-warn" text="תזמון המילים דורש בדיקה"></Label>
+            <Label class="badge badge-warn" textWrap="true" text="תזמון המילים דורש בדיקה"></Label>
           }
         </FlexboxLayout>
 
         @if (ref) {
-          <Button class="btn" [text]="playback.playing() === 'ref' ? 'עצירה' : preparing() ? 'מכין את ההקלטה…' : 'השמעת הקורא'" (tap)="listen()"
+          <Button class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : preparing() ? 'מכין את ההקלטה…' : 'השמעת הקורא'" (tap)="listen()"
             [isEnabled]="!rec.active() && !analyzing() && !preparing()"></Button>
           @if (refSeries().length) {
             <pitch-chart title="המנגינה של הקורא" [series]="refSeries()" [durationMs]="refContour()!.durationMs" [wordStartsMs]="refStarts" [words]="chartWords" [activeWord]="activeWord()"
               [playheadMs]="playback.playing() === 'ref' ? playback.positionMs() : null" [yad]="true" [width]="chartW"></pitch-chart>
           }
         } @else {
-          <Label class="error" textWrap="true" text="אין הקלטת קורא לפסוק הזה. אפשר לקרוא, אבל לא תהיה השוואת מנגינה."></Label>
+          <Label class="note" textWrap="true" text="אין הקלטת קורא מובנית לפסוק זה. המערכת תבדוק ותדרג את המילים, הניקוד וההפסקות שלכם במכשיר."></Label>
         }
 
-        <Button class="btn btn-record" [text]="rec.active() ? 'סיום הקריאה' : 'קריאת הפסוק'" (tap)="record()" [isEnabled]="!analyzing() && !preparing()"></Button>
+        <Button class="btn btn-record" textWrap="true" [text]="rec.active() ? 'סיום הקריאה' : 'קריאת הפסוק'" (tap)="record()" [isEnabled]="!analyzing() && !preparing()"></Button>
         @if (rec.active()) {
-          <Label class="meta center" [text]="'מקליט… ' + (rec.elapsedMs() / 1000).toFixed(0) + ' שניות'"></Label>
+          <Label class="meta center" textWrap="true" [text]="'מקליט… ' + (rec.elapsedMs() / 1000).toFixed(0) + ' שניות'"></Label>
           <GridLayout class="meter" height="12"><StackLayout class="meter-fill" horizontalAlignment="right" [width]="meter()"></StackLayout></GridLayout>
-          <Button class="btn-link" text="ביטול ההקלטה" (tap)="cancel()"></Button>
+          <Button class="btn-link" textWrap="true" text="ביטול ההקלטה" (tap)="cancel()"></Button>
         }
         @if (analyzing()) {
           <ActivityIndicator busy="true"></ActivityIndicator>
@@ -70,7 +70,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
         }
         @if (last(); as l) {
           <pitch-chart title="הקריאה הקודמת שלכם" [series]="lastSeries()" [durationMs]="l.charts.student.durationMs" [wordStartsMs]="l.charts.student.wordStartsMs" [words]="chartWords" [width]="chartW"></pitch-chart>
-          <Button class="btn-link" text="לתוצאות של הקריאה הקודמת" (tap)="nav.navigate(['/results', verse.id])"></Button>
+          <Button class="btn-link" textWrap="true" text="לתוצאות של הקריאה הקודמת" (tap)="nav.navigate(['/results', verse.id])"></Button>
         }
         @if (error()) {
           <Label class="error" textWrap="true" [text]="error()"></Label>
@@ -81,10 +81,6 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 })
 export class PracticeComponent implements OnDestroy {
   nav = inject(RouterExtensions);
-
-  goBack(): void {
-    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
-  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
   private content = inject(ContentService);
@@ -94,12 +90,17 @@ export class PracticeComponent implements OnDestroy {
   readonly chartW = Math.floor(Screen.mainScreen.widthDIPs - 32);
 
   readonly verse = this.content.verse(this.route.snapshot.params['id'])!;
+  readonly portionMeta = this.content.portionOfVerse(this.verse.id);
   readonly label = this.content.label(this.verse);
   readonly aliyahName = ALIYAH_NAMES_HE[this.verse.aliyah]?.full ?? `עלייה ${this.verse.aliyah}`;
   readonly ref = this.content.referenceFor(this.verse.id);
   readonly cov = this.content.coverage(this.verse.id);
-  readonly refBadge = this.cov.reference === 'approved' ? 'הקלטת קורא מאושרת' : this.cov.reference === 'pending' ? 'הקלטת קורא אמיתי – ממתינה לאישור מומחה' : 'אין הקלטת קורא';
+  readonly refBadge = this.cov.reference === 'approved' ? 'הקלטת קורא מאושרת' : this.cov.reference === 'pending' ? 'הקלטת קורא אמיתי – ממתינה לאישור מומחה' : 'בדיקת מילים וניקוד';
   readonly refStarts = this.ref?.words.map((w) => w.startMs) ?? [];
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', this.portionMeta.id], { aliyah: this.verse.aliyah });
+  }
 
   readonly line = signal<RabbiLine>(
     rabbiSays({ kind: 'verse-intro', where: this.label, attempts: this.store.progress().attemptCounts[this.verse.id] ?? 0, done: this.isDone() }),
@@ -117,7 +118,14 @@ export class PracticeComponent implements OnDestroy {
   readonly lastSeries = computed<ChartSeries[]>(() => (this.last() ? [{ points: this.last()!.charts.student.semitones, color: '#e07b00' }] : []));
 
   constructor() {
-    const lessons = planLessons(this.verse, this.store.progress().masteredCantillationIds);
+    this.content.activePortionId.set(this.portionMeta.id);
+    // Paywall guard: Aliyah 1 is always free; Aliyot 2–7 require the ₪10 Parasha purchase.
+    if (!this.store.isAliyahAccessible(this.portionMeta.id, this.verse.aliyah)) {
+      setTimeout(() => this.nav.navigate(['/portion', this.portionMeta.id], { replaceUrl: true, queryParams: { aliyah: this.verse.aliyah } }));
+      return;
+    }
+    // Only auto-open interactive cantillation lessons when reference audio is bundled for the verse.
+    const lessons = this.ref ? planLessons(this.verse, this.store.progress().masteredCantillationIds) : [];
     if (lessons.length && !this.route.snapshot.queryParams['skipLessons']) {
       setTimeout(() => this.nav.navigate(['/lesson', this.verse.id], { replaceUrl: true }));
       return;

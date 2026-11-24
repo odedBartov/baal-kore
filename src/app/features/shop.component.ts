@@ -1,14 +1,16 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, inject, signal } from '@angular/core';
 import { goBack } from '../core/navigation';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
-import { ContentService, hebrewNumber } from '../core/content.service';
+import { BillingService } from '../core/billing.service';
+import { ContentService } from '../core/content.service';
 import {
-  computeParashaSummary,
+  computeCatalogPortionSummary,
   FRAME_CATALOG,
   YAD_CATALOG,
   type RabbiFrame,
   type YadStyle,
 } from '../core/gamification';
+import { PARASHA_PRICE_LABEL_HE } from '../core/state';
 import { StoreService } from '../core/store.service';
 import { GamificationBarComponent } from '../ui/gamification-bar.component';
 
@@ -33,58 +35,69 @@ import { GamificationBarComponent } from '../ui/gamification-bar.component';
         }
 
         <!-- Power-ups & Unlocks -->
-        <Label class="section" text="⚡ חיזוקים ופתיחת שלבים"></Label>
+        <Label class="section" textWrap="true" text="⚡ חיזוקים ופתיחת שלבים"></Label>
 
         <GridLayout columns="auto, *" class="card shop-item">
-          <Button col="0" class="btn-small btn-primary" text="40 🪙 קנייה" (tap)="buyFreeze()"></Button>
+          <Button col="0" class="btn-small btn-primary" textWrap="true" text="40 🪙 קנייה" (tap)="buyFreeze()"></Button>
           <StackLayout col="1" verticalAlignment="center">
-            <Label class="cat-name" [text]="'🧊 הקפאת רצף (ברשותך: ' + store.progress().streakFreezes + ')'"></Label>
+            <Label class="cat-name" textWrap="true" [text]="'🧊 הקפאת רצף (ברשותך: ' + store.progress().streakFreezes + ')'"></Label>
             <Label class="meta" textWrap="true" text="שומר על רצף הימים שלכם גם אם פספסתם יום תרגול אחד."></Label>
           </StackLayout>
         </GridLayout>
 
         <GridLayout columns="auto, *" class="card shop-item">
-          <Button col="0" class="btn-small btn-primary" text="35 🪙 קנייה" (tap)="buyBooster()"></Button>
+          <Button col="0" class="btn-small btn-primary" textWrap="true" text="35 🪙 קנייה" (tap)="buyBooster()"></Button>
           <StackLayout col="1" verticalAlignment="center">
-            <Label class="cat-name" [text]="'⚡ מכפיל תגמולים x2 (פעיל ל־' + store.progress().doubleXpRemaining + ' קריאות)'"></Label>
+            <Label class="cat-name" textWrap="true" [text]="'⚡ מכפיל תגמולים x2 (פעיל ל־' + store.progress().doubleXpRemaining + ' קריאות)'"></Label>
             <Label class="meta" textWrap="true" text="מכפיל פי 2 את ה־XP והמטבעות ב־3 הקריאות או השיעורים הבאים!"></Label>
           </StackLayout>
         </GridLayout>
 
-        @if (nextLockedAliyah(); as na) {
+        <!-- Parasha Full Access (Google Play ₪10 Paywall) -->
+        <Label class="section" textWrap="true" text="📜 פתיחת פרשות מלאות (Google Play)"></Label>
+        @if (!summary().isPurchased) {
           <GridLayout columns="auto, *" class="card shop-item">
-            <Button col="0" class="btn-small btn-primary" text="40 🪙 פתיחה" (tap)="unlockAliyah(na.verseIds, na.nameHe)"></Button>
+            <Button col="0" class="btn-small btn-primary" textWrap="true" [text]="priceLabel + ' פתיחה'" (tap)="unlockActiveParasha()"></Button>
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="cat-name" [text]="'🔓 פתיחת כל ' + na.nameHe"></Label>
-              <Label class="meta" textWrap="true" [text]="'פותח מיד את כל ' + na.totalVerses + ' הפסוקים של ' + na.nameHe + ' לתרגול חופשי.'"></Label>
+              <Label class="cat-name" textWrap="true" [text]="'🔓 פתיחת כל פרשת ' + activePortion().nameHe + ' (עליות ב׳–ז׳)'"></Label>
+              <Label class="meta" textWrap="true" [text]="'עלייה ראשונה פתוחה תמיד בחינם. פתחו את כל שאר הפרשה בתשלום חד־פעמי של ' + priceLabel + ' דרך Google Play.'"></Label>
+            </StackLayout>
+          </GridLayout>
+        } @else {
+          <GridLayout columns="auto, *" class="card shop-item shop-equipped">
+            <Label col="0" class="badge-free" textWrap="true" verticalAlignment="center" text="פתוח ✓"></Label>
+            <StackLayout col="1" verticalAlignment="center">
+              <Label class="cat-name" textWrap="true" [text]="'✓ כל 7 העליות בפרשת ' + activePortion().nameHe + ' פתוחות'"></Label>
+              <Label class="meta" textWrap="true" text="כל הפסוקים בעליות א׳–ז׳ זמינים לתרגול מלא ללא הגבלה."></Label>
             </StackLayout>
           </GridLayout>
         }
+        <Button class="btn-link" textWrap="true" text="🔄 שחזור רכישות מ־Google Play" (tap)="restorePurchases()"></Button>
 
         <!-- Custom Yad Pointers -->
-        <Label class="section" text="👉 עיצוב היד הקוראת (מוצגת בגרף ובקריאה)"></Label>
+        <Label class="section" textWrap="true" text="👉 עיצוב היד הקוראת (מוצגת בגרף ובקריאה)"></Label>
         @for (y of yads; track y.id) {
           <GridLayout columns="auto, *, auto" class="card shop-item" [class.shop-equipped]="store.progress().equippedYad === y.id">
             <Image col="2" [src]="y.asset" width="68" height="68" marginLeft="8" stretch="aspectFit"></Image>
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="cat-name" [text]="y.icon + ' ' + y.nameHe"></Label>
+              <Label class="cat-name" textWrap="true" [text]="y.icon + ' ' + y.nameHe"></Label>
               <Label class="meta" textWrap="true" [text]="y.descHe"></Label>
             </StackLayout>
-            <Button col="0" class="btn-small" [class.btn-primary]="store.progress().equippedYad !== y.id"
+            <Button col="0" class="btn-small" textWrap="true" [class.btn-primary]="store.progress().equippedYad !== y.id"
               [text]="store.progress().equippedYad === y.id ? 'בשימוש ✓' : store.progress().ownedYads.includes(y.id) ? 'בחירה' : y.price + ' 🪙'"
               (tap)="selectYad(y.id, y.nameHe, y.price)"></Button>
           </GridLayout>
         }
 
         <!-- Custom Rabbi Frames & Titles -->
-        <Label class="section" text="🖼️ מסגרות ותארים לרב"></Label>
+        <Label class="section" textWrap="true" text="🖼️ מסגרות ותארים לרב"></Label>
         @for (f of frames; track f.id) {
           <GridLayout columns="auto, *" class="card shop-item" [class.shop-equipped]="store.progress().equippedFrame === f.id">
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="cat-name" [text]="f.icon + ' ' + f.nameHe + ' (' + f.titleBadgeHe + ')'"></Label>
+              <Label class="cat-name" textWrap="true" [text]="f.icon + ' ' + f.nameHe + ' (' + f.titleBadgeHe + ')'"></Label>
               <Label class="meta" textWrap="true" [text]="f.descHe"></Label>
             </StackLayout>
-            <Button col="0" class="btn-small" [class.btn-primary]="store.progress().equippedFrame !== f.id"
+            <Button col="0" class="btn-small" textWrap="true" [class.btn-primary]="store.progress().equippedFrame !== f.id"
               [text]="store.progress().equippedFrame === f.id ? 'בשימוש ✓' : store.progress().ownedFrames.includes(f.id) ? 'בחירה' : f.price + ' 🪙'"
               (tap)="selectFrame(f.id, f.nameHe, f.price)"></Button>
           </GridLayout>
@@ -100,13 +113,15 @@ export class ShopComponent {
     goBack(this.nav, ['/']);
   }
   readonly store = inject(StoreService);
+  readonly billing = inject(BillingService);
   private readonly content = inject(ContentService);
+  readonly priceLabel = PARASHA_PRICE_LABEL_HE;
   readonly yads = YAD_CATALOG;
   readonly frames = FRAME_CATALOG;
   readonly message = signal<string | null>(null);
 
-  readonly summary = computed(() => computeParashaSummary(this.content.verses, this.store.progress(), hebrewNumber));
-  readonly nextLockedAliyah = computed(() => this.summary().aliyot.find((a) => !a.allUnlocked) ?? null);
+  readonly activePortion = computed(() => this.content.portionOfVerse(this.store.progress().currentVerseId));
+  readonly summary = computed(() => computeCatalogPortionSummary(this.activePortion(), this.store.progress()));
 
   buyFreeze(): void {
     if (this.store.buyStreakFreeze()) this.message.set('🧊 רכשתם הקפאת רצף בהצלחה!');
@@ -118,9 +133,14 @@ export class ShopComponent {
     else this.message.set('אין מספיק מטבעות (נדרשים 35 🪙).');
   }
 
-  unlockAliyah(verseIds: string[], nameHe: string): void {
-    if (this.store.unlockAliyahWithCoins(verseIds, 40)) this.message.set(`🔓 כל הפסוקים של ${nameHe} נפתחו לתרגול!`);
-    else this.message.set('אין מספיק מטבעות (נדרשים 40 🪙).');
+  async unlockActiveParasha(): Promise<void> {
+    const ok = await this.billing.promptUnlockParasha(this.activePortion());
+    if (ok) this.message.set(`🎉 כל העליות בפרשת ${this.activePortion().nameHe} נפתחו לתרגול!`);
+  }
+
+  async restorePurchases(): Promise<void> {
+    const res = await this.billing.restorePurchases();
+    this.message.set(res.messageHe);
   }
 
   selectYad(id: YadStyle, nameHe: string, price: number): void {

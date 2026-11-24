@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, OnInit, computed, inject, signal } from '@angular/core';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
-import { ContentService, hebrewNumber } from '../core/content.service';
+import { ContentService } from '../core/content.service';
 import {
+  computeCatalogPortionSummary,
   computeChallengeStatus,
-  computeParashaSummary,
   type DailyQuest,
 } from '../core/gamification';
 import { requestNotificationPermission } from '../core/notifications';
@@ -36,13 +36,13 @@ import { RabbiComponent } from '../ui/rabbi.component';
         <StackLayout class="hero-card">
           <GridLayout columns="auto, *">
             <StackLayout col="0" class="grade-pill-box" verticalAlignment="center">
-              <Label class="grade-pill-num" [text]="summary().averageScore !== null ? '' + summary().averageScore : '—'"></Label>
-              <Label class="grade-pill-lbl" text="ממוצע פרשה"></Label>
+              <Label class="grade-pill-num" textWrap="true" [text]="summary().averageScore !== null ? '' + summary().averageScore : '—'"></Label>
+              <Label class="grade-pill-lbl" textWrap="true" text="ממוצע פרשה"></Label>
             </StackLayout>
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="card-title-gold" [text]="store.rank().badgeIcon + ' ' + store.rank().titleHe + ' (רמה ' + store.rank().level + ')'"></Label>
+              <Label class="card-title-gold" textWrap="true" [text]="store.rank().badgeIcon + ' ' + store.rank().titleHe + ' (רמה ' + store.rank().level + ')'"></Label>
               <Label class="body-light" textWrap="true" [text]="store.rank().subtitleHe"></Label>
-              <Label class="meta-light" [text]="'פרשת בראשית: ' + summary().doneVerses + ' מתוך ' + summary().totalVerses + ' פסוקים · כתרי עליות: 👑 ' + store.progress().aliyahCrowns.length + '/7'"></Label>
+              <Label class="meta-light" textWrap="true" [text]="'פרשת ' + activePortion().nameHe + ' (' + activePortion().bookNameHe + '): ' + summary().doneVerses + '/' + summary().totalVerses + ' פסוקים · כתרים: 👑 ' + store.progress().aliyahCrowns.length + '/7'"></Label>
             </StackLayout>
           </GridLayout>
         </StackLayout>
@@ -51,59 +51,59 @@ import { RabbiComponent } from '../ui/rabbi.component';
 
         <!-- Primary Action CTA -->
         @if (returning()) {
-          <Button class="btn btn-primary btn-cta" [text]="'▶ להמשיך בקריאה: ' + where()" (tap)="continue()"></Button>
+          <Button class="btn btn-primary btn-cta" textWrap="true" [text]="'▶ להמשיך בקריאה: ' + where()" (tap)="continue()"></Button>
           <GridLayout columns="*, *" class="buttons">
-            <Button col="1" class="btn" text="📖 עליות וציונים" (tap)="nav.navigate(['/portions'])"></Button>
-            <Button col="0" class="btn" text="🎯 אתגרים וחנות" (tap)="nav.navigate(['/challenges'])"></Button>
+            <Button col="1" class="btn" textWrap="true" text="📖 5 חומשים ופרשות" (tap)="nav.navigate(['/portions'])"></Button>
+            <Button col="0" class="btn" textWrap="true" text="🎯 אתגרים וחנות" (tap)="nav.navigate(['/challenges'])"></Button>
           </GridLayout>
         } @else {
-          <Button class="btn btn-primary btn-cta" text="🚀 מתחילים ללמוד (+50 🪙 מתנת פתיחה!)" (tap)="start()"></Button>
+          <Button class="btn btn-primary btn-cta" textWrap="true" text="🚀 מתחילים ללמוד (+50 🪙 מתנת פתיחה!)" (tap)="start()"></Button>
         }
 
         <!-- Time-Span Challenge Card -->
         @if (challengeStatus(); as cs) {
           <StackLayout class="challenge-active-card" (tap)="nav.navigate(['/challenges'])">
             <GridLayout columns="auto, *">
-              <Label col="0" class="badge-gold" [text]="'נותרו ' + cs.daysLeft + ' ימים'"></Label>
-              <Label col="1" class="cat-name" [text]="'⏱️ ' + cs.titleHe"></Label>
+              <Label col="0" class="badge-gold" textWrap="true" [text]="'נותרו ' + cs.daysLeft + ' ימים'"></Label>
+              <Label col="1" class="cat-name" textWrap="true" [text]="'⏱️ ' + cs.titleHe"></Label>
             </GridLayout>
-            <Label class="meta" [text]="'התקדמות: ' + cs.doneTargetVerses + '/' + cs.totalTargetVerses + ' פסוקים · יעד יומי: ' + cs.versesPerDayNeeded + ' פסוקים ליום'"></Label>
+            <Label class="meta" textWrap="true" [text]="'התקדמות: ' + cs.doneTargetVerses + '/' + cs.totalTargetVerses + ' פסוקים · יעד יומי: ' + cs.versesPerDayNeeded + ' פסוקים ליום'"></Label>
             <GridLayout class="meter" height="9">
               <StackLayout class="meter-fill" horizontalAlignment="right" [width]="(cs.progressPct / 100) * 310"></StackLayout>
             </GridLayout>
           </StackLayout>
         } @else {
           <GridLayout columns="auto, *" class="card challenge-invite" (tap)="quickStartChallenge()">
-            <Button col="0" class="btn-small btn-primary" text="התחל אתגר" (tap)="quickStartChallenge()"></Button>
+            <Button col="0" class="btn-small btn-primary" textWrap="true" text="התחל אתגר" (tap)="quickStartChallenge()"></Button>
             <StackLayout col="1" verticalAlignment="center">
-              <Label class="cat-name" text="⏱️ אתגר 14 ימים לפרשת בראשית"></Label>
+              <Label class="cat-name" textWrap="true" [text]="'⏱️ אתגר 14 ימים לפרשת ' + activePortion().nameHe"></Label>
               <Label class="meta" textWrap="true" text="הגדירו יעד יומי לסיום הפרשה וזכו ב־180 🪙 ו־450 XP!"></Label>
             </StackLayout>
           </GridLayout>
         }
 
         <!-- Daily Quests Preview -->
-        <Label class="section" text="🎯 משימות היום"></Label>
+        <Label class="section" textWrap="true" text="🎯 משימות היום"></Label>
         @for (q of store.dailyQuests(); track q.id) {
           <GridLayout columns="auto, *, auto" class="quest-card" [class.quest-done]="q.completed">
             <Label col="2" class="quest-icon" [text]="q.icon"></Label>
             <StackLayout col="1">
-              <Label class="quest-title" [text]="q.titleHe"></Label>
-              <Label class="meta" [text]="q.current + ' / ' + q.target + ' הושלמו'"></Label>
+              <Label class="quest-title" textWrap="true" [text]="q.titleHe"></Label>
+              <Label class="meta" textWrap="true" [text]="q.current + ' / ' + q.target + ' הושלמו'"></Label>
             </StackLayout>
             <StackLayout col="0" verticalAlignment="center">
               @if (q.claimed) {
-                <Label class="quest-claimed" text="✓ נאסף"></Label>
+                <Label class="quest-claimed" textWrap="true" text="✓ נאסף"></Label>
               } @else if (q.completed) {
-                <Button class="btn-claim" [text]="'+' + q.rewardCoins + '🪙 איסוף'" (tap)="claim(q)"></Button>
+                <Button class="btn-claim" textWrap="true" [text]="'+' + q.rewardCoins + '🪙 איסוף'" (tap)="claim(q)"></Button>
               } @else {
-                <Label class="quest-reward" [text]="'+' + q.rewardCoins + ' 🪙'"></Label>
+                <Label class="quest-reward" textWrap="true" [text]="'+' + q.rewardCoins + ' 🪙'"></Label>
               }
             </StackLayout>
           </GridLayout>
         }
 
-        <Label class="note center" textWrap="true" text="האפליקציה עובדת בלי אינטרנט. ההקלטות והנתונים שלכם נשמרים רק במכשיר."></Label>
+        <Label class="note center" textWrap="true" text="כל 5 חומשי התורה (54 פרשות) זמינים באפליקציה בלי אינטרנט. ההקלטות והנתונים שלכם נשמרים רק במכשיר."></Label>
       </StackLayout>
     </ScrollView>
   `,
@@ -115,9 +115,10 @@ export class WelcomeComponent implements OnInit {
   readonly toast = signal<string | null>(null);
 
   readonly returning = computed(() => this.store.progress().welcomed);
+  readonly activePortion = computed(() => this.content.portionOfVerse(this.store.progress().currentVerseId));
   readonly where = computed(() => this.content.label(this.content.verse(this.store.progress().currentVerseId) ?? this.content.verses[0]));
   readonly line = computed(() => rabbiSays({ kind: 'welcome', returning: this.returning(), where: this.where() }));
-  readonly summary = computed(() => computeParashaSummary(this.content.verses, this.store.progress(), hebrewNumber));
+  readonly summary = computed(() => computeCatalogPortionSummary(this.activePortion(), this.store.progress()));
   readonly challengeStatus = computed(() => computeChallengeStatus(this.store.progress().challengePlan, this.summary()));
 
   ngOnInit(): void {
@@ -137,7 +138,7 @@ export class WelcomeComponent implements OnInit {
 
   quickStartChallenge(): void {
     this.store.startChallenge('parasha-14d');
-    this.toast.set('⏱️ אתגר 14 הימים לפרשת בראשית הופעל! בהצלחה!');
+    this.toast.set(`⏱️ אתגר 14 הימים לפרשת ${this.activePortion().nameHe} הופעל! בהצלחה!`);
   }
 
   claim(q: DailyQuest): void {

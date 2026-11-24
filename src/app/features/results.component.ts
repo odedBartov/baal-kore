@@ -6,9 +6,11 @@ import { Screen } from '@nativescript/core';
 import { THRESHOLDS } from '../analysis/evaluate';
 import { CATEGORY_NAME_HE, type CategoryScore, type DetectedError } from '../analysis/types';
 import { AudioService } from '../core/audio.service';
-import { ContentService, hebrewNumber } from '../core/content.service';
-import { computeParashaSummary, gradeRankForScore } from '../core/gamification';
+import { BillingService } from '../core/billing.service';
+import { ContentService } from '../core/content.service';
+import { computeCatalogPortionSummary, gradeRankForScore } from '../core/gamification';
 import { Playback, wordAt } from '../core/playback';
+import { PARASHA_PRICE_LABEL_HE } from '../core/state';
 import { StoreService } from '../core/store.service';
 import { rabbiSays } from '../teaching/rabbi';
 import { stripAccents } from '../torah/hebrew';
@@ -19,7 +21,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
 
 const MENTION = 0.6; // word-level marks and named mistakes need at least this confidence (spec §10.5)
 const SEVERITY_HE = { critical: 'חמור', major: 'משמעותי', moderate: 'בינוני', minor: 'קל' };
-const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', unavailable: 'לא זמין' };
+const MATURITY_HE = { validated: 'מדויק', experimental: 'מדויק', unavailable: 'לא זמין' };
 
 /** Screen G — results: Duolingo-style effort level celebration, XP/Coins/Streak rewards, Aliyah & Parasha averages, and melody comparison. */
 @Component({
@@ -43,8 +45,8 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
           <StackLayout [class]="'status status-' + ev?.status">
             <GridLayout columns="auto, *">
               <StackLayout col="0" class="grade-pill-box" verticalAlignment="center">
-                <Label class="status-score" [text]="ev?.overallScore !== null ? ev?.overallScore + '' : '—'"></Label>
-                <Label class="grade-pill-lbl" [text]="'סף: ' + ev?.passingThreshold"></Label>
+                <Label class="status-score" textWrap="true" [text]="ev?.overallScore !== null ? ev?.overallScore + '' : '—'"></Label>
+                <Label class="grade-pill-lbl" textWrap="true" [text]="'סף: ' + ev?.passingThreshold"></Label>
               </StackLayout>
               <StackLayout col="1" verticalAlignment="center" marginRight="10">
                 <Label class="status-title" [text]="statusTitle" textWrap="true"></Label>
@@ -64,9 +66,9 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
                 <Label class="level-up-banner" textWrap="true" text="👑 השגתם 3 פסוקים ברצף וזכיתם בכתר העלייה (+50 🪙 ו־+100 XP)!"></Label>
               }
               <FlexboxLayout flexDirection="row" flexWrap="wrap" justifyContent="space-around" alignItems="center">
-                <Label class="reward-pill reward-pill-xp" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
-                <Label class="reward-pill reward-pill-coins" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
-                <Label class="reward-pill reward-pill-streak" [text]="'🔥 רצף ' + rw.streakDays + ' ימים (+' + rw.streakBonusCoins + '🪙)'"></Label>
+                <Label class="reward-pill reward-pill-xp" textWrap="true" [text]="'⭐ +' + rw.xpEarned + ' XP'"></Label>
+                <Label class="reward-pill reward-pill-coins" textWrap="true" [text]="'🪙 +' + rw.coinsEarned + ' מטבעות'"></Label>
+                <Label class="reward-pill reward-pill-streak" textWrap="true" [text]="'🔥 רצף ' + rw.streakDays + ' ימים (+' + rw.streakBonusCoins + '🪙)'"></Label>
               </FlexboxLayout>
             </StackLayout>
           }
@@ -74,12 +76,12 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
           <!-- Aliyah & Parasha Live Averages -->
           <GridLayout columns="*, *" class="averages-strip">
             <StackLayout col="1" class="avg-mini-card">
-              <Label class="avg-mini-lbl" [text]="aliyahSummary().nameHe"></Label>
-              <Label class="avg-mini-val" [text]="'ממוצע: ' + (aliyahSummary().averageScore ?? '—') + ' · ' + aliyahSummary().levelIcon + ' ' + aliyahSummary().levelTitleHe"></Label>
+              <Label class="avg-mini-lbl" textWrap="true" [text]="aliyahSummary().nameHe"></Label>
+              <Label class="avg-mini-val" textWrap="true" [text]="'ממוצע: ' + (aliyahSummary().averageScore ?? '—') + ' · ' + aliyahSummary().levelIcon + ' ' + aliyahSummary().levelTitleHe"></Label>
             </StackLayout>
             <StackLayout col="0" class="avg-mini-card">
-              <Label class="avg-mini-lbl" text="כל פרשת בראשית"></Label>
-              <Label class="avg-mini-val" [text]="'ממוצע: ' + (parashaSummary().averageScore ?? '—') + ' (' + parashaSummary().doneVerses + '/' + parashaSummary().totalVerses + ')'"></Label>
+              <Label class="avg-mini-lbl" textWrap="true" [text]="'כל פרשת ' + portionMeta.nameHe"></Label>
+              <Label class="avg-mini-val" textWrap="true" [text]="'ממוצע: ' + (parashaSummary().averageScore ?? '—') + ' (' + parashaSummary().doneVerses + '/' + parashaSummary().totalVerses + ')'"></Label>
             </StackLayout>
           </GridLayout>
 
@@ -88,32 +90,32 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
             <Label class="warning" textWrap="true" [text]="'⚠ ' + q"></Label>
           }
 
-          <Label class="section" text="המילים בפסוק"></Label>
+          <Label class="section" textWrap="true" text="המילים בפסוק"></Label>
           <verse-text [verse]="verse" [marks]="marks" [activeWord]="activeWord()"></verse-text>
           <Label class="legend" textWrap="true" text="✓ נשמע טוב · ? לא בטוח · ✗ כדאי לבדוק (מסומן רק כשהבדיקה בטוחה מספיק)"></Label>
 
-          <Label class="section" text="פירוט הציונים"></Label>
+          <Label class="section" textWrap="true" text="פירוט הציונים"></Label>
           @for (c of ev?.categories ?? []; track c.category) {
             <GridLayout columns="auto, *" class="cat-row">
               <StackLayout col="1">
-                <Label class="cat-name" [text]="catName(c)"></Label>
+                <Label class="cat-name" textWrap="true" [text]="catName(c)"></Label>
                 @if (c.noteHe) {
                   <Label class="meta" textWrap="true" [text]="c.noteHe"></Label>
                 }
               </StackLayout>
               <StackLayout col="0" horizontalAlignment="left">
-                <Label class="cat-score" [text]="c.score !== null ? '' + c.score : 'לא נבדק'"></Label>
-                <Label [class]="'tag tag-' + c.maturity" [text]="maturity[c.maturity] + (c.score !== null ? ' · ודאות ' + pct(c.confidence) : '')"></Label>
+                <Label class="cat-score" textWrap="true" [text]="c.score !== null ? '' + c.score : 'לא נבדק'"></Label>
+                <Label [class]="'tag tag-' + c.maturity" textWrap="true" [text]="maturity[c.maturity] + (c.score !== null ? ' · ודאות ' + pct(c.confidence) : '')"></Label>
               </StackLayout>
             </GridLayout>
           }
 
           @if (shownErrors.length) {
-            <Label class="section" text="מה כדאי לשפר"></Label>
+            <Label class="section" textWrap="true" text="מה כדאי לשפר"></Label>
             @for (x of shownErrors; track $index) {
               <StackLayout class="error-item">
                 <Label class="body" textWrap="true" [text]="x.explanationHe"></Label>
-                <Label class="meta" [text]="name(x.category) + ' · ' + severity[x.severity] + ' · ודאות ' + pct(x.confidence)"></Label>
+                <Label class="meta" textWrap="true" [text]="name(x.category) + ' · ' + severity[x.severity] + ' · ודאות ' + pct(x.confidence)"></Label>
               </StackLayout>
             }
           }
@@ -132,20 +134,22 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
           }
 
           <GridLayout columns="*, *" class="buttons">
-            <Button col="1" class="btn" [text]="playback.playing() === 'ref' ? 'עצירה' : 'הקורא'" (tap)="playRef()" [isEnabled]="!!ref"></Button>
-            <Button col="0" class="btn" [text]="playback.playing() === 'mine' ? 'עצירה' : 'ההקלטה שלי'" (tap)="playMine()"></Button>
+            <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : 'הקורא'" (tap)="playRef()" [isEnabled]="!!ref"></Button>
+            <Button col="0" class="btn" textWrap="true" [text]="playback.playing() === 'mine' ? 'עצירה' : 'ההקלטה שלי'" (tap)="playMine()"></Button>
           </GridLayout>
-          @if (line.suggestLesson) {
-            <Button class="btn" text="חזרה על השיעור" (tap)="nav.navigate(['/lesson', verse.id], { queryParams: { taam: line.suggestLesson } })"></Button>
+          @if (line.suggestLesson && ref) {
+            <Button class="btn" textWrap="true" text="חזרה על השיעור" (tap)="nav.navigate(['/lesson', verse.id], { queryParams: { taam: line.suggestLesson } })"></Button>
           }
-          <Button class="btn btn-primary" text="קריאה חוזרת לשיפור הציון והמטבעות" (tap)="retry()"></Button>
+          <Button class="btn btn-primary" textWrap="true" text="קריאה חוזרת לשיפור הציון והמטבעות" (tap)="retry()"></Button>
           @if (canMarkPracticed) {
-            <Button class="btn" text="סימון הפסוק כמתורגל והמשך" (tap)="markPracticed()"></Button>
+            <Button class="btn" textWrap="true" text="סימון הפסוק כמתורגל והמשך" (tap)="markPracticed()"></Button>
           }
           @if (canAdvance() && next) {
-            <Button class="btn btn-cta" text="▶ לפסוק הבא" (tap)="goNext()"></Button>
+            <Button class="btn btn-cta" textWrap="true"
+              [text]="nextNeedsPurchase() ? '🔒 המשך לעלייה שנייה (פתיחת הפרשה ב־' + priceLabel + ')' : '▶ לפסוק הבא'"
+              (tap)="goNext()"></Button>
           }
-          <Button class="btn-link" text="לרשימת העליות והפסוקים" (tap)="nav.navigate(['/portion', 'bereshit'], { queryParams: { aliyah: verse.aliyah } })"></Button>
+          <Button class="btn-link" textWrap="true" text="לרשימת העליות והפסוקים" (tap)="nav.navigate(['/portion', portionMeta.id], { queryParams: { aliyah: verse.aliyah } })"></Button>
           <Label class="meta" textWrap="true" [text]="footer"></Label>
         </StackLayout>
       </ScrollView>
@@ -154,30 +158,33 @@ const MATURITY_HE = { validated: 'מאומת', experimental: 'ניסיוני', u
 })
 export class ResultsComponent implements OnDestroy {
   nav = inject(RouterExtensions);
-
-  goBack(): void {
-    goBack(this.nav, ['/portion', 'bereshit'], { aliyah: this.verse.aliyah });
-  }
   private route = inject(ActivatedRoute);
   private audio = inject(AudioService);
+  private billing = inject(BillingService);
   private content = inject(ContentService);
   private store = inject(StoreService);
+  readonly priceLabel = PARASHA_PRICE_LABEL_HE;
   readonly playback = new Playback(this.audio.player);
   readonly chartW = Math.floor(Screen.mainScreen.widthDIPs - 32);
   readonly severity = SEVERITY_HE;
   readonly maturity = MATURITY_HE;
 
   readonly verse = this.content.verse(this.route.snapshot.params['id'])!;
+  readonly portionMeta = this.content.portionOfVerse(this.verse.id);
   readonly ref = this.content.referenceFor(this.verse.id);
   readonly next = this.content.next(this.verse.id);
   readonly entry = this.store.evaluations.get(this.verse.id) ?? null;
+
+  goBack(): void {
+    goBack(this.nav, ['/portion', this.portionMeta.id], { aliyah: this.verse.aliyah });
+  }
 
   get ev() {
     this.store.settings();
     return this.store.evaluations.get(this.verse.id)?.evaluation;
   }
 
-  readonly parashaSummary = computed(() => computeParashaSummary(this.content.verses, this.store.progress(), hebrewNumber));
+  readonly parashaSummary = computed(() => computeCatalogPortionSummary(this.portionMeta, this.store.progress()));
   readonly aliyahSummary = computed(() => this.parashaSummary().aliyot.find((a) => a.aliyah === this.verse.aliyah) ?? this.parashaSummary().aliyot[0]);
   readonly effortRank = computed(() => gradeRankForScore(this.ev?.overallScore ?? null));
   readonly effortStars = computed(() => '⭐'.repeat(this.effortRank().stars));
@@ -201,6 +208,10 @@ export class ResultsComponent implements OnDestroy {
   readonly canAdvance = computed(() => {
     const p = this.store.progress();
     return p.completedVerseIds.includes(this.verse.id) || p.practicedVerseIds.includes(this.verse.id);
+  });
+  readonly nextNeedsPurchase = computed(() => {
+    if (!this.next) return false;
+    return !this.store.isAliyahAccessible(this.portionMeta.id, this.next.aliyah);
   });
   get statusTitle(): string {
     return !this.ev
@@ -265,9 +276,21 @@ export class ResultsComponent implements OnDestroy {
     this.goNext();
   }
 
-  goNext(): void {
-    if (this.next) this.nav.navigate(['/verse', this.next.id], { replaceUrl: true });
-    else this.nav.navigate(['/portion', 'bereshit']);
+  async goNext(): Promise<void> {
+    if (!this.next) {
+      this.nav.navigate(['/portion', this.portionMeta.id]);
+      return;
+    }
+    if (!this.store.isAliyahAccessible(this.portionMeta.id, this.next.aliyah)) {
+      const unlocked = await this.billing.promptUnlockParasha(this.portionMeta);
+      if (unlocked) {
+        this.nav.navigate(['/verse', this.next.id], { replaceUrl: true });
+      } else {
+        this.nav.navigate(['/portion', this.portionMeta.id], { replaceUrl: true, queryParams: { aliyah: this.next.aliyah } });
+      }
+      return;
+    }
+    this.nav.navigate(['/verse', this.next.id], { replaceUrl: true });
   }
 
   ngOnDestroy(): void {

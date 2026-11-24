@@ -2,6 +2,7 @@
 // boundary (NativeScript worker messages are serialised). Native helpers (Java) are callable from workers.
 import '@nativescript/core/globals';
 import { getFileAccess } from '@nativescript/core';
+import { synthesizeCantillationWav, SYNTH_SAMPLE_RATE } from './cantillation-synth';
 import { decodeWav, encodeWav, resample } from './wav';
 import { detectPitch, medianVoicedHz, signalQuality, type PitchFrame, type SignalQuality } from './pitch';
 import { mfcc } from './mfcc';
@@ -10,6 +11,7 @@ import { evaluate, type EvalCharts, type EvalWord, type MelodyConfig } from '../
 import { K } from '../analysis/ctc';
 import type { VerseEvaluation } from '../analysis/types';
 import { checkLesson, cutPhrase, type LessonCheck } from '../teaching/lesson-check';
+import type { VerseData } from '../torah/model';
 import ctcModel from '../../data/ctc-model.json';
 import phoneModel from '../../data/phone-model.json';
 import { fbank } from './fbank';
@@ -17,17 +19,15 @@ import { tokenIndex, type PhoneLogProbs } from '../analysis/vowels';
 
 const RATE = 16000;
 
-declare const il: {
-  co: {
-    infraedge: {
-      torahtutor: {
-        AudioDecoder: { decodeToWav(src: string, dst: string, startMs: number, endMs: number): number };
-        PhoneModel: new (modelPath: string, threads: number) => { logProbsToFile(featPath: string, n: number, out: string): number };
-        CtcModel: {
-          new (modelPath: string, columns: string, threads: number): { logProbsToFile(wav: string, out: string): number };
-          hasAsset(name: string): boolean;
-          ensureAsset(name: string): string;
-        };
+declare const com: {
+  baalkore: {
+    app: {
+      AudioDecoder: { decodeToWav(src: string, dst: string, startMs: number, endMs: number): number };
+      PhoneModel: new (modelPath: string, threads: number) => { logProbsToFile(featPath: string, n: number, out: string): number };
+      CtcModel: {
+        new (modelPath: string, columns: string, threads: number): { logProbsToFile(wav: string, out: string): number };
+        hasAsset(name: string): boolean;
+        ensureAsset(name: string): string;
       };
     };
   };
@@ -35,6 +35,7 @@ declare const il: {
 
 export type WorkerRequest =
   | { type: 'decode'; src: string; dst: string; startMs: number; endMs: number }
+  | { type: 'synth-reference'; dst: string; verse: VerseData }
   | { type: 'clip'; src: string; dst: string; words: { startMs: number; endMs: number }[]; first: number; last: number }
   | { type: 'contour'; wav: string }
   | { type: 'ctc-status' }
@@ -100,7 +101,7 @@ let ctcInstance: { logProbsToFile(wav: string, out: string): number } | null = n
 let ctcStatus: CtcStatus | null = null;
 function ensureCtc(): CtcStatus {
   if (ctcStatus) return ctcStatus;
-  const T = il.co.infraedge.torahtutor;
+  const T = com.baalkore.app;
   if (!T.CtcModel.hasAsset(ctcModel.asset)) return (ctcStatus = { available: false, reasonHe: 'רכיב זיהוי המילים אינו מותקן במכשיר זה.' });
   try {
     const t = Date.now();
@@ -116,7 +117,7 @@ let phoneStatus: CtcStatus | null = null;
 const phoneIdx = tokenIndex(phoneModel.tokens);
 function ensurePhones(): CtcStatus {
   if (phoneStatus) return phoneStatus;
-  const T = il.co.infraedge.torahtutor;
+  const T = com.baalkore.app;
   if (!T.CtcModel.hasAsset(phoneModel.asset)) return (phoneStatus = { available: false, reasonHe: 'רכיב בדיקת הניקוד אינו מותקן במכשיר זה.' });
   try {
     const t = Date.now();
@@ -156,7 +157,12 @@ function contour(wav: string): ContourResult {
 function handle(req: WorkerRequest): WorkerResult {
   switch (req.type) {
     case 'decode':
-      return { sampleRate: il.co.infraedge.torahtutor.AudioDecoder.decodeToWav(req.src, req.dst, Math.round(req.startMs), Math.round(req.endMs)) };
+      return { sampleRate: com.baalkore.app.AudioDecoder.decodeToWav(req.src, req.dst, Math.round(req.startMs), Math.round(req.endMs)) };
+    case 'synth-reference': {
+      const wavBuf = synthesizeCantillationWav(req.verse);
+      writeBytes(req.dst, wavBuf);
+      return { sampleRate: SYNTH_SAMPLE_RATE };
+    }
     case 'clip': {
       const w = decodeWav(getFileAccess().readBufferSync(req.src));
       const c = cutPhrase(w.samples, w.sampleRate, req.words, req.first, req.last);

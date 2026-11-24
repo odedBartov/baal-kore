@@ -4,6 +4,8 @@ import type { VerseEvaluation } from '../analysis/types';
 import type { EvalCharts } from '../analysis/evaluate';
 import {
   defaultProgress,
+  isAliyahAccessible,
+  isPortionPurchased,
   migrateProgress,
   migrateSettings,
   type AttemptSummary,
@@ -94,10 +96,45 @@ export class StoreService {
     }
   }
 
-  /** Clears learning progress. */
+  /** Clears learning progress while preserving any real-money Parasha purchases. */
   resetProgress(): void {
-    this.updateProgress((p) => Object.assign(p, defaultProgress(), { welcomed: true }));
+    const owned = [...(this.progress().purchasedPortionIds ?? [])];
+    this.updateProgress((p) => Object.assign(p, defaultProgress(), { welcomed: true, purchasedPortionIds: owned }));
     this.evaluations.clear();
+  }
+
+  isPortionPurchased(portionId: string): boolean {
+    return isPortionPurchased(portionId, this.progress());
+  }
+
+  isAliyahAccessible(portionId: string, aliyah: number): boolean {
+    return isAliyahAccessible(portionId, aliyah, this.progress());
+  }
+
+  /** Marks a Parasha (Aliyot 2–7) as purchased via Google Play Billing. */
+  markPortionPurchased(portionId: string): void {
+    this.updateProgress((p) => {
+      if (!p.purchasedPortionIds.includes(portionId)) {
+        p.purchasedPortionIds.push(portionId);
+      }
+    });
+  }
+
+  /** Merges a list of owned Parasha IDs restored from Google Play Billing. Returns count of newly added Parashot. */
+  syncPurchasedPortions(portionIds: string[]): number {
+    let added = 0;
+    const cur = this.progress().purchasedPortionIds ?? [];
+    const missing = portionIds.filter((id) => !cur.includes(id));
+    if (!missing.length) return 0;
+    this.updateProgress((p) => {
+      for (const id of missing) {
+        if (!p.purchasedPortionIds.includes(id)) {
+          p.purchasedPortionIds.push(id);
+          added += 1;
+        }
+      }
+    });
+    return added;
   }
 
   recordAttempt(e: VerseEvaluation, aliyah?: number): EffortAssessment {

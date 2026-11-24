@@ -1,4 +1,4 @@
-package il.co.infraedge.torahtutor;
+package com.baalkore.app;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
@@ -143,7 +143,7 @@ public final class CtcModel {
         }
     }
 
-    /** True when the model ships in the APK (it is optional: without it, word checks report "unavailable"). */
+    /** True when the model ships in the APK or install-time Play Asset Delivery pack. */
     public static boolean hasAsset(String assetName) {
         try (InputStream ignored = context().getAssets().open(assetName)) {
             return true;
@@ -152,15 +152,19 @@ public final class CtcModel {
         }
     }
 
-    /** Copies an (uncompressed) APK asset to app storage once and returns its path — ORT needs a real file. */
+    /** Copies an APK or Play Asset Delivery install-time asset to app storage once and returns its path. */
     public static String ensureAsset(String assetName) throws IOException {
         Context ctx = context();
         File dst = new File(ctx.getFilesDir(), assetName);
-        long size;
+        long size = -1;
         try (AssetFileDescriptor fd = ctx.getAssets().openFd(assetName)) {
             size = fd.getLength();
+        } catch (IOException ignored) {
+            // Asset may be compressed inside an AAB / install-time asset pack; fall back to stream copy.
         }
-        if (dst.exists() && dst.length() == size) return dst.getAbsolutePath();
+        if (dst.exists() && dst.length() > 0 && (size < 0 || dst.length() == size)) {
+            return dst.getAbsolutePath();
+        }
         File tmp = new File(dst.getPath() + ".tmp");
         dst.getParentFile().mkdirs();
         try (InputStream in = ctx.getAssets().open(assetName); OutputStream out = new FileOutputStream(tmp)) {

@@ -1,4 +1,4 @@
-﻿// Draws the anime-style rabbi (6 expressions × idle / blink / talk frames) and the Torah pointer (yad) as SVG and
+// Draws the anime-style rabbi (6 expressions × idle / blink / talk frames) and the Torah pointer (yad) as SVG and
 // rasterises them to PNG for the app. Build-time only (resvg); the app ships PNGs.
 // Usage: node scripts/build-art.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -239,9 +239,9 @@ function torahScroll() {
     <rect x="-12" y="136" width="24" height="10" rx="4" fill="url(#goldBand)" stroke="${L}" stroke-width="2"/>
     <circle cx="0" cy="190" r="13" fill="url(#silverRod)" stroke="${L}" stroke-width="3"/>
     <rect x="-13" y="36" width="26" height="11" rx="4" fill="url(#goldBand)" stroke="${L}" stroke-width="2.5"/>
-    <ellipse cx="0" cy="25" rx="13" ry="13" fill="url(#silverRod)" stroke="${L}" stroke-width="3"/>
-    <path d="M-8 22 q8 -4 16 0 M-8 29 q8 -4 16 0" stroke="#6d7680" stroke-width="1.6" fill="none"/>
-    <rect x="-4.5" y="-2" width="9" height="20" rx="4.5" fill="url(#silverRod)" stroke="${L}" stroke-width="2.5"/>
+    <path d="M-8 36 L-9 18 C-9 12, -4 10, -4 -3 C -4 -8, 3 -8, 3 -3 L 3 14 C 7 15, 11 19, 10 26 C 9 32, 7 36, 6 36 Z" fill="url(#silverRod)" stroke="${L}" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M -4 14 C 0 12, 3 13, 3 16" stroke="#6d7680" stroke-width="1.6" fill="none"/>
+    <path d="M 3 23 C 7 23, 9 20, 8 18" stroke="#6d7680" stroke-width="1.4" fill="none"/>
   </g>`;
 }
 const svgDoc = (w, h, body, defs = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs>${BRAND_DEFS}${defs}</defs>${body}</svg>`;

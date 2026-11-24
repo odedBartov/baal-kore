@@ -8,7 +8,9 @@
 Page { background-color: #f9f5eb; }
 ActionBar { background-color: #153152; color: #ffffff; }
 .ab-action { color: #ffd978; font-size: 16; font-weight: bold; padding: 8 14; }
-Label { text-align: right; color: #24211c; }
+.ab-title { color: #ffffff; font-size: 18; font-weight: bold; text-align: right; white-space: normal; }
+Label { text-align: right; color: #24211c; white-space: normal; }
+Button { white-space: normal; }
 
 .page { padding: 14 16 24 16; }
 .h1 { font-size: 34; font-weight: bold; text-align: center; color: #153152; margin-top: 8; }
@@ -54,7 +56,7 @@ Label { text-align: right; color: #24211c; }
 .cat-avg-chip { font-size: 12; font-weight: bold; background-color: #244b7a; color: #ffeaad; padding: 3 9; margin: 2 3; border-radius: 10; }
 
 /* Buttons: Duolingo-style tactile buttons */
-.btn { font-size: 17; font-weight: bold; min-height: 50; margin: 5 0; border-radius: 14; background-color: #ece4d2; color: #2b2620; border-bottom-width: 3; border-color: #cfc3a8; text-transform: none; }
+.btn { font-size: 17; font-weight: bold; min-height: 50; padding: 6 12; margin: 5 0; border-radius: 14; background-color: #ece4d2; color: #2b2620; border-bottom-width: 3; border-color: #cfc3a8; text-transform: none; white-space: normal; }
 .btn-primary { background-color: #1a5ca3; color: #ffffff; border-color: #0f3d70; }
 .btn-cta { background-color: #168a53; color: #ffffff; font-size: 18; min-height: 56; border-color: #0d5935; }
 .btn-record { background-color: #c92a22; color: #ffffff; font-weight: bold; font-size: 19; min-height: 60; border-color: #871813; }
@@ -111,6 +113,12 @@ Label { text-align: right; color: #24211c; }
 .aliyah-score-num { font-size: 20; font-weight: bold; color: #153152; text-align: center; }
 .aliyah-score-lbl { font-size: 10; color: #6b6252; text-align: center; }
 .aliyah-banner-card { background-color: #ffffff; border-radius: 14; border-width: 1.5; border-color: #decb9e; padding: 10 12; margin: 4 12; }
+.paywall-card { background-color: #17375e; border-radius: 16; border-width: 2; border-color: #f0bc42; padding: 12 14; margin: 4 12; }
+.paywall-title { font-size: 17; font-weight: bold; color: #ffd978; }
+.paywall-sub { font-size: 13; color: #e4eefb; margin: 4 0 8 0; }
+.btn-paywall { background-color: #f0ab18; color: #161208; font-size: 16; font-weight: bold; min-height: 48; padding: 6 14; border-radius: 14; border-bottom-width: 3; border-color: #b87f09; text-transform: none; white-space: normal; }
+.badge-free { font-size: 12; font-weight: bold; padding: 4 10; margin: 2 4; border-radius: 12; background-color: #d9f5e4; color: #0f6132; }
+.badge-paywall { font-size: 12; font-weight: bold; padding: 4 10; margin: 2 4; border-radius: 12; background-color: #fff0bd; color: #7a4f00; }
 .boss-crown-icon { font-size: 26; width: 40; text-align: center; vertical-align: middle; }
 
 /* Verse text */
@@ -148,7 +156,7 @@ Label { text-align: right; color: #24211c; }
 .verse-row.locked { opacity: 0.55; background-color: #f4EFE2; }
 .verse-num { font-size: 17; font-weight: bold; color: #17375e; text-align: center; }
 .verse-stars { font-size: 11; text-align: center; }
-.verse-preview { font-family: "Ezra SIL", EzraSIL; font-size: 21; color: #1f1b16; }
+.verse-preview { font-family: "Ezra SIL", EzraSIL; font-size: 21; color: #1f1b16; line-height: 4; white-space: normal; }
 .verse-status { font-size: 19; width: 36; text-align: center; vertical-align: middle; }
 .verse-score-badge { font-size: 13; font-weight: bold; background-color: #fff0bd; color: #7a4f00; padding: 2 7; border-radius: 8; text-align: center; margin-bottom: 2; }
 .verse-score-high { background-color: #d9f5e4; color: #126337; }

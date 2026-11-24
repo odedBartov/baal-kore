@@ -8,8 +8,20 @@ import { accentsOf, charClass, graphemes, spokenConsonants, stripMarks } from '.
 import { TAAM_BY_ID, taamIdOf } from '../src/app/torah/cantillation';
 import { planLessons } from '../src/app/teaching/lessons';
 import { rabbiSays } from '../src/app/teaching/rabbi';
-import { defaultProgress, isUnlocked, migrateProgress, migrateSettings } from '../src/app/core/state';
+import {
+  defaultProgress,
+  isAliyahAccessible,
+  isVerseAccessible,
+  isUnlocked,
+  migrateProgress,
+  migrateSettings,
+  playProductIdForPortion,
+  portionIdFromPlayProductId,
+} from '../src/app/core/state';
 import { applyEffortReward, computeParashaSummary, getUserRank } from '../src/app/core/gamification';
+import { computeSyntheticVerseSchedule, synthesizeCantillationWav } from '../src/app/audio/cantillation-synth';
+import { decodeWav } from '../src/app/audio/wav';
+import { detectPitch, medianVoicedHz } from '../src/app/audio/pitch';
 
 import type { VerseEvaluation } from '../src/app/analysis/types';
 
@@ -134,4 +146,64 @@ test('rabbi: names words only on confident evidence, reports unusable audio, nev
   assert.equal(say({ errors: [melody] }, { 'taam:tipcha': 3 }).ruleId, 'eval-repeated-taam');
   assert.equal(say({ errors: [melody] }, { 'taam:tipcha': 3 }).suggestLesson, 'tipcha');
   assert.equal(say({ status: 'passed', inconclusiveReason: undefined, overallScore: 92 }).ruleId, 'eval-passed');
+});
+
+test('all 5 books of the Torah (54 parashot, 5846 verses) are catalogued and valid', () => {
+  const catalog = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'src', 'data', 'torah-catalog.json'), 'utf8'));
+  assert.equal(catalog.books.length, 5);
+  assert.deepEqual(
+    catalog.books.map((b: { id: string; portionIds: string[] }) => [b.id, b.portionIds.length]),
+    [
+      ['Genesis', 12],
+      ['Exodus', 11],
+      ['Leviticus', 10],
+      ['Numbers', 10],
+      ['Deuteronomy', 11],
+    ],
+  );
+  assert.equal(catalog.portions.length, 54);
+  const totalCatalogVerses = catalog.portions.reduce((s: number, p: { totalVerses: number }) => s + p.totalVerses, 0);
+  assert.equal(totalCatalogVerses, 5846);
+
+  // Spot-check first parasha of each book on disk + verify cantillation reference audio & timings synthesis
+  for (const pid of ['bereshit', 'noach', 'shemot', 'vayikra', 'bamidbar', 'devarim', 'vzot-haberachah']) {
+    const pData: PortionData = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'src', 'assets', 'portions', `${pid}.json`), 'utf8'));
+    assert.ok(pData.verses.length > 0, `${pid} has verses`);
+    assert.equal(pData.aliyot.length, 7, `${pid} has 7 aliyot`);
+    assert.equal(pData.verses.at(-1)!.words.at(-1)!.primary, 'sof-pasuk', `${pid} ends with sof-pasuk`);
+
+    const v0 = pData.verses[0];
+    const sched = computeSyntheticVerseSchedule(v0);
+    assert.equal(sched.words.length, v0.words.length, `${pid} schedule matches word count`);
+    assert.ok(sched.endMs > sched.words.at(-1)!.endMs, `${pid} schedule has valid duration`);
+    const wavBuf = synthesizeCantillationWav(v0);
+    const decoded = decodeWav(wavBuf);
+    assert.equal(decoded.sampleRate, 16000);
+    const frames = detectPitch(decoded.samples, decoded.sampleRate);
+    const med = medianVoicedHz(frames);
+    assert.ok(med !== null && med > 110 && med < 240, `${pid} synthesized cantillation has clear vocal pitch (${med} Hz)`);
+  }
+});
+
+test('paywall: Aliyah 1 is always free with all verses open; Aliyot 2–7 require ₪10 per-Parasha purchase', () => {
+  const p = defaultProgress();
+  assert.equal(playProductIdForPortion('lech-lecha'), 'parasha_lech_lecha');
+  assert.equal(portionIdFromPlayProductId('parasha_lech_lecha', ['bereshit', 'lech-lecha']), 'lech-lecha');
+
+  // Aliyah 1 is free across every Parasha, while Aliyot 2..7 are paywalled until purchased
+  assert.equal(isAliyahAccessible('bereshit', 1, p), true);
+  assert.equal(isVerseAccessible('bereshit', 1, p), true);
+  for (let a = 2; a <= 7; a++) {
+    assert.equal(isAliyahAccessible('bereshit', a, p), false);
+    assert.equal(isVerseAccessible('bereshit', a, p), false);
+  }
+
+  // Purchasing 'bereshit' unlocks Aliyot 2..7 of 'bereshit', while 'noach' still has only Aliyah 1 free
+  p.purchasedPortionIds.push('bereshit');
+  for (let a = 1; a <= 7; a++) {
+    assert.equal(isAliyahAccessible('bereshit', a, p), true);
+    assert.equal(isVerseAccessible('bereshit', a, p), true);
+  }
+  assert.equal(isAliyahAccessible('noach', 1, p), true);
+  assert.equal(isAliyahAccessible('noach', 2, p), false);
 });

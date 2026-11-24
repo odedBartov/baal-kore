@@ -1,6 +1,6 @@
 // The Torah pointer (yad): a prestigious ornate pointer with a crowned, gem-set finial, filigree rings, an enamel
 // collar and a sculpted hand whose index finger points at the word. Drawn upright (finger down) and rotated 40°, so the
-// fingertip lands at about (43, 167) of the 200×200 canvas (the charts rely on that: tip at the bottom-left).
+// fingertip lands at about (40, 163) of the 200×200 canvas (the charts rely on that: tip at the bottom-left).
 
 export const PALETTES = {
   silver: { // polished sterling silver with gold trim and a sapphire
@@ -34,7 +34,7 @@ export function yadSvg(c) {
   <radialGradient id="ball" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="${c.hi}"/><stop offset="0.55" stop-color="${c.mid}"/><stop offset="1" stop-color="${c.lo}"/></radialGradient>
   <radialGradient id="tball" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="${c.trimHi}"/><stop offset="0.55" stop-color="${c.trimMid}"/><stop offset="1" stop-color="${c.trimLo}"/></radialGradient>
   <radialGradient id="gem" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="${c.gemHi}"/><stop offset="0.4" stop-color="${c.gem}"/><stop offset="1" stop-color="${c.edge}"/></radialGradient>
-  <linearGradient id="hand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.hi}"/><stop offset="0.5" stop-color="${c.mid}"/><stop offset="1" stop-color="${c.lo}"/></linearGradient>
+  <linearGradient id="hand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.hi}"/><stop offset="0.45" stop-color="${c.mid}"/><stop offset="1" stop-color="${c.lo}"/></linearGradient>
   <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="2" dy="3" stdDeviation="2.2" flood-color="#000" flood-opacity="0.35"/></filter>
 </defs>
 <g filter="url(#shadow)"><g transform="rotate(40 100 100)">
@@ -62,19 +62,61 @@ export function yadSvg(c) {
   <path d="M91 129 L109 129 L112 137 L88 137 Z" fill="${c.enamel}" opacity="0.9"/>
   <circle cx="100" cy="133" r="3.2" fill="url(#gem)" stroke="${c.trimLo}" stroke-width="0.9"/>
   <path d="M84 140 q16 8 32 0" stroke="${c.trimLo}" stroke-width="1.4" fill="none"/>
-  <!-- sculpted hand, index finger pointing down -->
-  <path d="M87 140 C 83 150, 84 162, 92 166 L108 166 C 116 160, 117 148, 113 140 Z" fill="url(#hand)" stroke="${c.edge}" stroke-width="1.6" stroke-linejoin="round"/>
-  <!-- curled fingers -->
-  ${[0, 1, 2].map((i) => `<ellipse cx="${112 - i * 0.6}" cy="${148 + i * 7}" rx="5.2" ry="4" fill="url(#hand)" stroke="${c.edge}" stroke-width="1.3"/>`).join('')}
-  <!-- thumb -->
-  <path d="M86 146 C 77 148, 76 158, 84 160 C 90 160, 92 154, 90 150 Z" fill="url(#hand)" stroke="${c.edge}" stroke-width="1.4" stroke-linejoin="round"/>
-  <!-- index finger with knuckles and nail -->
-  <path d="M95 162 L95 184 C 95 191, 105 191, 105 184 L105 162 Z" fill="url(#hand)" stroke="${c.edge}" stroke-width="1.5" stroke-linejoin="round"/>
-  <path d="M95.5 171 q4.5 2 9 0 M95.5 178 q4.5 2 9 0" stroke="${c.lo}" stroke-width="1" fill="none" opacity="0.8"/>
-  <path d="M97 185 C 97 189, 103 189, 103 185" stroke="#fff" stroke-width="1.1" fill="none" opacity="0.7"/>
-  <!-- specular glints -->
+
+  <!-- Curled fingers (middle, ring, pinky) on the inner fist -->
+  <g fill="url(#hand)" stroke="${c.edge}" stroke-width="1.4" stroke-linejoin="round">
+    <!-- Pinky knuckle -->
+    <path d="M 105 141 C 111 142, 114 147, 112 153 C 109 156, 104 155, 102 149 Z"/>
+    <!-- Ring finger knuckle -->
+    <path d="M 103 148 C 110 150, 113 156, 110 162 C 107 165, 101 164, 99 157 Z"/>
+    <!-- Middle finger knuckle -->
+    <path d="M 98 155 C 106 157, 108 166, 105 172 C 100 175, 94 172, 95 164 Z"/>
+  </g>
+  <!-- Curled fingers fold lines -->
+  <path d="M 103 149 C 106 151, 110 150, 112 147" stroke="${c.lo}" stroke-width="1" fill="none"/>
+  <path d="M 100 157 C 104 159, 109 158, 110 155" stroke="${c.lo}" stroke-width="1" fill="none"/>
+  <path d="M 96 165 C 100 168, 105 167, 105 164" stroke="${c.lo}" stroke-width="1" fill="none"/>
+
+  <!-- Extended index finger & dorsal back-of-hand:
+       Smooth, continuous outer contour on the left edge.
+       From collar (88, 140) down to tip (91.5, 185).
+  -->
+  <path d="M 88 140
+           C 87 146, 87 156, 88.5 165
+           L 91.5 184
+           C 92 188.5, 96.5 188.5, 97 184
+           L 97.5 164
+           C 98 156, 101 147, 107 140
+           Z"
+        fill="url(#hand)" stroke="${c.edge}" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <!-- Index finger joint creases -->
+  <path d="M 89.8 170 C 92 172, 95 172, 97 170" stroke="${c.lo}" stroke-width="1.1" fill="none" opacity="0.85"/>
+  <path d="M 90.8 177 C 92.5 179, 95 179, 96.6 177" stroke="${c.lo}" stroke-width="1.1" fill="none" opacity="0.85"/>
+
+  <!-- Ornate filigree ring on index finger -->
+  <rect x="89.5" y="167" width="8" height="3" rx="1.5" fill="url(#trim)" stroke="${c.trimLo}" stroke-width="0.8"/>
+
+  <!-- Index fingernail with highlight -->
+  <path d="M 92 184 C 92 187.5, 96 187.5, 96 184" stroke="#ffffff" stroke-width="1.3" fill="none" opacity="0.9"/>
+  <ellipse cx="94" cy="184.2" rx="1.6" ry="1.1" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Thumb: emerges from the wrist/palm base and curves across to rest over the middle finger -->
+  <path d="M 88 140
+           C 89 146, 92 152, 96 156
+           C 100 160, 104 160, 104 156
+           C 104 152, 99 148, 96 144
+           C 93 141, 90 140, 88 140
+           Z"
+        fill="url(#hand)" stroke="${c.edge}" stroke-width="1.3" stroke-linejoin="round"/>
+  <!-- Thumb knuckle and nail detail -->
+  <path d="M 99 158 C 101 159, 103 158, 102.5 155" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.8"/>
+  <path d="M 92 147 C 95 149, 98 149, 100 146" stroke="${c.lo}" stroke-width="0.9" fill="none" opacity="0.75"/>
+
+  <!-- Specular dorsal highlight: runs from wrist down the outer edge of index finger -->
+  <path d="M 88.8 142 L 89.2 165 L 92 183" stroke="#ffffff" stroke-width="1.4" opacity="0.75" stroke-linecap="round"/>
+  <!-- Specular glint on shaft -->
   <path d="M95.5 20 L95.5 120" stroke="#fff" stroke-width="1.6" opacity="0.55" stroke-linecap="round"/>
-  <path d="M96.5 150 L96.5 160" stroke="#fff" stroke-width="1.4" opacity="0.5" stroke-linecap="round"/>
 </g></g>
 </svg>`;
 }

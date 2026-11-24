@@ -13,7 +13,7 @@ export interface ChartSeries {
 }
 
 const PAD = 8; // DIPs above/below the sung range
-const LABEL_H = 26; // word labels under the chart
+const LABEL_H = 32; // word labels under the chart
 
 /**
  * Karaoke-style melody chart: time flows right-to-left like the Hebrew text, one column per word with the word
@@ -33,7 +33,7 @@ const LABEL_H = 26; // word labels under the chart
       @if (legend().length) {
         <FlexboxLayout class="chart-legend" flexDirection="row" justifyContent="flex-end">
           @for (s of legend(); track $index) {
-            <Label class="chart-legend-text" [text]="s.label"></Label>
+            <Label class="chart-legend-text" textWrap="true" [text]="s.label"></Label>
             <StackLayout class="chart-legend-swatch" width="22" [height]="s.lane ? 12 : 5" [borderRadius]="6" [backgroundColor]="s.color" [opacity]="s.lane ? 0.3 : 1"></StackLayout>
           }
         </FlexboxLayout>
@@ -42,7 +42,7 @@ const LABEL_H = 26; // word labels under the chart
         @for (b of bands(); track $index) {
           <StackLayout [left]="b.x" top="0" [width]="b.w" [height]="height()" [backgroundColor]="b.bg"></StackLayout>
           @if (b.label) {
-            <Label [left]="b.x" [top]="height() + 2" [width]="b.w" class="chart-word" [class.chart-word-bad]="b.bad" [fontSize]="b.fontSize" [text]="b.label"></Label>
+            <Label [left]="b.x" [top]="height() + 2" [width]="b.w" class="chart-word" textWrap="true" [class.chart-word-bad]="b.bad" [fontSize]="b.fontSize" [text]="b.label"></Label>
           }
         }
         @for (y of grid(); track $index) {
@@ -115,8 +115,8 @@ export class PitchChartComponent {
         w: width,
         bg: bad.has(w) ? '#fde3e1' : w === active ? '#fff1c2' : w % 2 ? '#faf6ee' : '#ffffff',
         bad: bad.has(w),
-        label: width >= 14 ? label : '',
-        fontSize: Math.max(9, Math.min(15, width / (chars * 0.62 + 0.6))),
+        label: width >= 10 ? label : '',
+        fontSize: Math.max(7.5, Math.min(14, (width - 2) / (chars * 0.72 + 0.5))),
       }];
     });
   });

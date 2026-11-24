@@ -1,7 +1,7 @@
 import { NativeScriptConfig } from '@nativescript/core';
 
 export default {
-  id: 'il.co.infraedge.torahtutor',
+  id: 'com.baalkore.app',
   appPath: 'src',
   appResourcesPath: 'App_Resources',
   android: {

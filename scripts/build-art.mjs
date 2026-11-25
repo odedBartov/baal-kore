@@ -245,7 +245,7 @@ function torahScroll() {
   </g>`;
 }
 const svgDoc = (w, h, body, defs = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs>${BRAND_DEFS}${defs}</defs>${body}</svg>`;
-const scaled = (k) => `<g transform="translate(216 216) scale(${k}) translate(-216 -216)">${torahScroll()}</g>`;
+const scaled = (k) => `<g transform="translate(216 216) scale(${k}) translate(-225 -224)">${torahScroll()}</g>`;
 const ICON_SCALE = 0.68; // the scroll inside the 66 dp safe circle; the yad's handle may run out past the mask
 const ICON_FG = svgDoc(432, 432, scaled(ICON_SCALE));
 const ICON_BG = svgDoc(432, 432, `<rect width="432" height="432" fill="url(#bg)"/>`);
@@ -253,7 +253,7 @@ const ICON_BG = svgDoc(432, 432, `<rect width="432" height="432" fill="url(#bg)"
 const ICON_MONO = svgDoc(432, 432, `<g filter="url(#ink)">${scaled(ICON_SCALE)}</g>`, `<filter id="ink"><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.5 -0.5 -0.5 1.5 0"/></filter>`);
 // Legacy icon (Android 7): both layers in a rounded square, with the outer 18 dp trimmed as the launcher would.
 const ICON_LEGACY = svgDoc(432, 432, `<clipPath id="sq"><rect x="36" y="36" width="360" height="360" rx="80"/></clipPath><g clip-path="url(#sq)"><rect width="432" height="432" fill="url(#bg)"/>${scaled(0.8)}</g>`);
-const ICON_PLAY = svgDoc(432, 432, `<g transform="translate(-72 -72) scale(1.5)"><rect width="432" height="432" fill="url(#bg)"/>${scaled(ICON_SCALE)}</g>`); // what the launcher shows, full-bleed 512 for a store listing
+const ICON_PLAY = svgDoc(432, 432, `<rect width="432" height="432" fill="url(#bg)"/>${scaled(1.0)}`); // full-bleed 512 centered for the Play Store listing
 const fontOpts = { font: { fontFiles: [join(import.meta.dirname, '..', 'src', 'fonts', 'EzraSIL.ttf')], loadSystemFonts: false, defaultFontFamily: 'Ezra SIL' } };
 const pngAt = (svg, w) => new Resvg(svg, { fitTo: { mode: 'width', value: w }, ...fontOpts }).render().asPng();
 const DENSITY = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
@@ -265,6 +265,38 @@ for (const [d, k] of Object.entries(DENSITY)) {
   writeFileSync(join(RES, `mipmap-${d}`, 'ic_launcher.png'), pngAt(ICON_LEGACY, 48 * k));
 }
 writeFileSync(join(import.meta.dirname, '..', 'docs', 'store-icon-512.png'), pngAt(ICON_PLAY, 512));
+
+// Google Play Store Feature Graphic (1024×500 PNG): royal navy banner with Sefer Torah + Yad and title.
+const FEATURE_SVG = svgDoc(
+  1024,
+  500,
+  `<rect width="1024" height="500" fill="url(#bg)"/>
+   <ellipse cx="235" cy="250" rx="210" ry="185" fill="url(#glow)"/>
+   <g transform="translate(235 250) scale(0.9) translate(-225 -224)">${torahScroll()}</g>
+   <text x="680" y="210" text-anchor="middle" font-family="Ezra SIL" font-size="108" font-weight="bold" fill="#ffd978" direction="rtl">בעל קורא</text>
+   <text x="680" y="290" text-anchor="middle" font-family="Ezra SIL" font-size="36" font-weight="bold" fill="#fff4da" direction="rtl">לימוד קריאה בתורה וטעמי המקרא</text>
+   <text x="680" y="346" text-anchor="middle" font-family="Ezra SIL" font-size="23" fill="#c7d9f0" direction="rtl">חמשת חומשי התורה · כל הפרשות · משוב קולי חכם</text>`,
+);
+writeFileSync(join(import.meta.dirname, '..', 'docs', 'feature-graphic-1024x500.png'), pngAt(FEATURE_SVG, 1024));
+
+// Google Play One-Time Product Icon (1024×1024 32-bit PNG, 1:1, no text/promotions/branding):
+// Golden-crowned open Sefer Torah with jeweled gold Yad pointer.
+const PRODUCT_ICON_SVG = svgDoc(
+  432,
+  432,
+  `<rect width="432" height="432" fill="url(#bg)"/>
+   <circle cx="216" cy="222" r="185" fill="url(#glow)"/>
+   <!-- Golden Torah Crown (Keter Torah) above the scroll -->
+   <g stroke="${L}" stroke-width="3.2" stroke-linejoin="round">
+     <path d="M168 88 L178 52 L198 72 L216 44 L234 72 L254 52 L264 88 Z" fill="url(#goldBand)"/>
+     <rect x="166" y="85" width="100" height="10" rx="5" fill="url(#knob)"/>
+     <circle cx="178" cy="48" r="5.5" fill="#e03131"/>
+     <circle cx="216" cy="40" r="6.5" fill="#169c65"/>
+     <circle cx="254" cy="48" r="5.5" fill="#e03131"/>
+   </g>
+   <g transform="translate(216 242) scale(0.84) translate(-225 -224)">${torahScroll()}</g>`,
+);
+writeFileSync(join(import.meta.dirname, '..', 'docs', 'product-parasha-unlock-1024.png'), pngAt(PRODUCT_ICON_SVG, 1024));
 
 // Splash. Android 12+: the system shows windowSplashScreenAnimatedIcon (288 dp, content inside a 192 dp circle) and a
 // branding image (200×80 dp) on the navy background. Older Android: the launch theme's layer-list, the same picture.

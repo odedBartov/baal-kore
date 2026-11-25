@@ -9,13 +9,11 @@
 		android:largeScreens="true"
 		android:xlargeScreens="true"/>
 
-	<!-- Offline app: no INTERNET permission in release builds (src/debug adds it for dev tooling only). -->
+	<!-- Required for Google Play Billing and Online Coupon Verification / Revocation. -->
+	<uses-permission android:name="android.permission.INTERNET"/>
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-	<!-- onnxruntime-android declares network permissions and a telemetry provider; this app has no runtime
-	     network use and no remote telemetry (spec §2), so they are stripped from the merged manifest. -->
-	<uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove"/>
 	<!-- Implied by a NativeScript library manifest without targetSdkVersion; unused, and sensitive in a children's app. -->
 	<uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
@@ -37,7 +35,7 @@
 			android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|locale|uiMode"
 			android:theme="@style/LaunchScreenTheme"
 			android:hardwareAccelerated="true"
-      		android:launchMode="singleTask"
+			android:launchMode="singleTask"
 			android:exported="true">
 
 			<meta-data android:name="SET_THEME_ON_LAUNCH" android:resource="@style/AppTheme" />

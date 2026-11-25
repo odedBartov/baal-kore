@@ -8,12 +8,21 @@ import {
   isPortionPurchased,
   migrateProgress,
   migrateSettings,
+  priceLabelForDiscount,
   type AttemptSummary,
   type RabbiFrame,
   type Settings,
   type StudentProgress,
   type YadStyle,
 } from './state';
+import {
+  fetchOnlineCouponsManifest,
+  findRevokedCouponIds,
+  verifyCouponAgainstManifest,
+  type CouponKind,
+  type OnlineCouponsManifest,
+  type VerifiedCoupon,
+} from './coupons';
 import {
   applyEffortReward,
   CHALLENGE_PRESETS,
@@ -96,11 +105,121 @@ export class StoreService {
     }
   }
 
-  /** Clears learning progress while preserving any real-money Parasha purchases. */
+  /** Clears learning progress while preserving any real-money Parasha purchases and redeemed coupons. */
   resetProgress(): void {
     const owned = [...(this.progress().purchasedPortionIds ?? [])];
-    this.updateProgress((p) => Object.assign(p, defaultProgress(), { welcomed: true, purchasedPortionIds: owned }));
+    const coupons = [...(this.progress().redeemedCoupons ?? [])];
+    const couponMap = JSON.parse(JSON.stringify(this.progress().couponUnlockedPortions ?? {}));
+    const discount = this.progress().activeDiscountPct ?? 0;
+    this.updateProgress((p) =>
+      Object.assign(p, defaultProgress(), {
+        welcomed: true,
+        purchasedPortionIds: owned,
+        redeemedCoupons: coupons,
+        couponUnlockedPortions: couponMap,
+        activeDiscountPct: discount,
+      }),
+    );
     this.evaluations.clear();
+  }
+
+  readonly currentPriceLabel = computed(() => priceLabelForDiscount(0));
+  readonly hasDiscount50 = computed(() => false);
+
+  /** Applies a verified online coupon (1 free Parasha or VIP all 54 Parashot) and records which Parashot it unlocked for revocation tracking. */
+  applyVerifiedOnlineCoupon(
+    coupon: VerifiedCoupon,
+    targetPortionId: string,
+    allPortionIds: string[],
+  ): { ok: boolean; kind?: CouponKind; unlockedPortion?: boolean; messageHe: string } {
+    const cur = this.progress();
+    if (coupon.singleUse && cur.redeemedCoupons?.includes(coupon.id)) {
+      return { ok: false, messageHe: 'קוד קופון זה כבר מומש במכשיר זה.' };
+    }
+
+    const portionsToUnlock = coupon.kind === 'free-all' ? allPortionIds : [targetPortionId];
+    this.updateProgress((p) => {
+      if (!p.couponUnlockedPortions) p.couponUnlockedPortions = {};
+      const tracked = p.couponUnlockedPortions[coupon.id] ?? [];
+      for (const pid of portionsToUnlock) {
+        if (!p.purchasedPortionIds.includes(pid)) {
+          p.purchasedPortionIds.push(pid);
+        }
+        if (!tracked.includes(pid)) {
+          tracked.push(pid);
+        }
+      }
+      p.couponUnlockedPortions[coupon.id] = tracked;
+      if (!p.redeemedCoupons.includes(coupon.id)) {
+        p.redeemedCoupons.push(coupon.id);
+      }
+    });
+
+    return {
+      ok: true,
+      kind: coupon.kind,
+      unlockedPortion: true,
+      messageHe: coupon.descriptionHe,
+    };
+  }
+
+  /**
+   * Removes any Parashot unlocked by coupons that have since been revoked or deleted in the online `coupons.json` manifest.
+   * Returns the number of revoked coupon IDs found.
+   */
+  syncRevokedCouponsFromManifest(manifest: OnlineCouponsManifest): number {
+    const cur = this.progress();
+    const redeemed = cur.redeemedCoupons ?? [];
+    const revokedIds = findRevokedCouponIds(redeemed, manifest);
+    if (!revokedIds.length) return 0;
+
+    this.updateProgress((p) => {
+      if (!p.couponUnlockedPortions) p.couponUnlockedPortions = {};
+      const revokedSet = new Set(revokedIds);
+      // Keep track of portions still unlocked by OTHER active coupons
+      const stillCouponUnlocked = new Set<string>();
+      for (const [cid, pids] of Object.entries(p.couponUnlockedPortions)) {
+        if (!revokedSet.has(cid) && Array.isArray(pids)) {
+          for (const pid of pids) stillCouponUnlocked.add(pid);
+        }
+      }
+      // Remove portions that belonged to revoked coupons (unless covered by another active coupon)
+      for (const cid of revokedIds) {
+        const pids = p.couponUnlockedPortions[cid] ?? [];
+        for (const pid of pids) {
+          if (!stillCouponUnlocked.has(pid)) {
+            p.purchasedPortionIds = p.purchasedPortionIds.filter((id) => id !== pid);
+          }
+        }
+        delete p.couponUnlockedPortions[cid];
+      }
+      p.redeemedCoupons = p.redeemedCoupons.filter((id) => !revokedSet.has(id));
+    });
+    return revokedIds.length;
+  }
+
+  /** Fetches the online `coupons.json` manifest, syncs any revocations, and validates `rawCode`. */
+  async redeemCouponOnline(
+    rawCode: string,
+    targetPortionId: string,
+    allPortionIds: string[],
+  ): Promise<{ ok: boolean; kind?: CouponKind; unlockedPortion?: boolean; messageHe: string }> {
+    let manifest: OnlineCouponsManifest;
+    try {
+      manifest = await fetchOnlineCouponsManifest();
+    } catch {
+      return {
+        ok: false,
+        messageHe: 'לא ניתן לאמת את הקופון כרגע. אנא בדקו את החיבור לאינטרנט ונסו שוב.',
+      };
+    }
+
+    this.syncRevokedCouponsFromManifest(manifest);
+    const check = verifyCouponAgainstManifest(rawCode, manifest);
+    if (check.status !== 'valid') {
+      return { ok: false, messageHe: check.messageHe };
+    }
+    return this.applyVerifiedOnlineCoupon(check.coupon, targetPortionId, allPortionIds);
   }
 
   isPortionPurchased(portionId: string): boolean {

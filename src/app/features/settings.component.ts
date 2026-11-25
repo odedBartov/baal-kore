@@ -65,10 +65,13 @@ export const APP_VERSION = '0.6.0 (Gamified Edition)'; // keep in step with vers
         </GridLayout>
         <Label class="meta" textWrap="true" text="בדיקת הניקוד בודקת את התנועות לפי ההגייה שבחרתם. באשכנזית קמץ נקרא o, וחולם וצירה יכולים להישמע כ-oi, ei או ou."></Label>
 
-        <Label class="section" textWrap="true" text="💳 רכישות ו־Google Play Billing"></Label>
-        <Label class="body" textWrap="true" [text]="'עלייה ראשונה (כהן) פתוחה בחינם בכל 54 הפרשות. פתיחת עליות ב׳–ז׳ לכל פרשה: ' + priceLabel + ' (חד־פעמי).'"></Label>
-        <Label class="meta" textWrap="true" [text]="'פרשות שנרכשו במכשיר זה: ' + store.progress().purchasedPortionIds.length + ' מתוך 54 · מזהה מוצר ב־Play Console: parasha_<id>'"></Label>
-        <Button class="btn" textWrap="true" [text]="billing.busy() ? 'משחזר רכישות…' : '🔄 שחזור רכישות מ־Google Play'" [isEnabled]="!billing.busy()" (tap)="restorePurchases()"></Button>
+        <Label class="section" textWrap="true" text="💳 רכישות, קופונים ו־Google Play Billing"></Label>
+        <Label class="body" textWrap="true" [text]="'עלייה ראשונה (כהן) פתוחה בחינם בכל 54 הפרשות. פתיחת עליות ב׳–ז׳ לכל פרשה: ' + store.currentPriceLabel() + (store.hasDiscount50() ? ' (קופון 50% הנחה פעיל!)' : ' (חד־פעמי).')"></Label>
+        <Label class="meta" textWrap="true" [text]="'פרשות שנרכשו במכשיר זה: ' + store.progress().purchasedPortionIds.length + ' מתוך 54 · קופונים שמומשו: ' + store.progress().redeemedCoupons.length"></Label>
+        <GridLayout columns="*, *" class="setting">
+          <Button col="1" class="btn" textWrap="true" text="🎟️ הזנת קוד קופון / הנחה" (tap)="redeemCoupon()"></Button>
+          <Button col="0" class="btn" textWrap="true" [text]="billing.busy() ? 'משחזר…' : '🔄 שחזור רכישות'" [isEnabled]="!billing.busy()" (tap)="restorePurchases()"></Button>
+        </GridLayout>
 
         <Label class="section" textWrap="true" text="נתונים ופרטיות"></Label>
         <GridLayout columns="auto, *" class="setting">
@@ -160,5 +163,11 @@ export class SettingsComponent {
   async restorePurchases(): Promise<void> {
     const res = await this.billing.restorePurchases();
     this.notifToast.set(res.messageHe);
+  }
+
+  async redeemCoupon(): Promise<void> {
+    const curPortion = this.content.portionOfVerse(this.store.progress().currentVerseId);
+    const ok = await this.billing.promptRedeemCoupon(curPortion);
+    if (ok) this.notifToast.set('🎉 הקופון הופעל בהצלחה!');
   }
 }

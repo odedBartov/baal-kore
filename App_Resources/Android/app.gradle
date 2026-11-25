@@ -2,8 +2,8 @@
 dependencies {
   // On-device CTC model for word checks (MIT). The model itself is an optional asset: npm run fetch-model.
   implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.31.0'
-  // Google Play In-App Billing SDK for ₪10 per-Parasha unlock (Aliyot 2–7).
-  implementation 'com.android.billingclient:billing:7.0.0'
+  // Google Play In-App Billing SDK v8 for ₪10 per-Parasha unlock (Aliyot 2–7).
+  implementation 'com.android.billingclient:billing:8.0.0'
 }
 
 def isAabBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains("bundle") }
@@ -17,8 +17,8 @@ android {
     targetSdkVersion 36
 
     // Version Information
-    versionCode 3
-    versionName "0.7.0"
+    versionCode 8
+    versionName "1.0.2"
 
     generatedDensities = []
 

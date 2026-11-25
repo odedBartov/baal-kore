@@ -19,6 +19,12 @@ import {
   portionIdFromPlayProductId,
 } from '../src/app/core/state';
 import { applyEffortReward, computeParashaSummary, getUserRank } from '../src/app/core/gamification';
+import {
+  findRevokedCouponIds,
+  hashCouponCode,
+  verifyCouponAgainstManifest,
+  type OnlineCouponsManifest,
+} from '../src/app/core/coupons';
 import { computeSyntheticVerseSchedule, synthesizeCantillationWav } from '../src/app/audio/cantillation-synth';
 import { decodeWav } from '../src/app/audio/wav';
 import { detectPitch, medianVoicedHz } from '../src/app/audio/pitch';
@@ -187,7 +193,7 @@ test('all 5 books of the Torah (54 parashot, 5846 verses) are catalogued and val
 
 test('paywall: Aliyah 1 is always free with all verses open; Aliyot 2–7 require ₪10 per-Parasha purchase', () => {
   const p = defaultProgress();
-  assert.equal(playProductIdForPortion('lech-lecha'), 'parasha_lech_lecha');
+  assert.equal(playProductIdForPortion('lech-lecha'), 'parasha_unlock');
   assert.equal(portionIdFromPlayProductId('parasha_lech_lecha', ['bereshit', 'lech-lecha']), 'lech-lecha');
 
   // Aliyah 1 is free across every Parasha, while Aliyot 2..7 are paywalled until purchased
@@ -206,4 +212,32 @@ test('paywall: Aliyah 1 is always free with all verses open; Aliyot 2–7 requir
   }
   assert.equal(isAliyahAccessible('noach', 1, p), true);
   assert.equal(isAliyahAccessible('noach', 2, p), false);
+
+  // Online Coupon verification & revocation against coupons.json
+  const manifest: OnlineCouponsManifest = JSON.parse(
+    readFileSync(join(import.meta.dirname, '..', 'coupons.json'), 'utf8'),
+  );
+  const odedCheck = verifyCouponAgainstManifest('odedTest', manifest);
+  assert.equal(odedCheck.status, 'valid');
+  if (odedCheck.status === 'valid') {
+    assert.equal(odedCheck.coupon.kind, 'free-parasha');
+  }
+  // Case-insensitive match
+  assert.equal(verifyCouponAgainstManifest('ODEDTEST', manifest).status, 'valid');
+  assert.equal(verifyCouponAgainstManifest('INVALID-CODE-123', manifest).status, 'invalid');
+
+  // Test revoking a coupon
+  const revokedManifest: OnlineCouponsManifest = {
+    version: 1,
+    coupons: [
+      {
+        id: 'test-vip',
+        sha256: hashCouponCode('vipSecret'),
+        kind: 'free-all',
+        active: false,
+      },
+    ],
+  };
+  assert.equal(verifyCouponAgainstManifest('vipSecret', revokedManifest).status, 'revoked');
+  assert.deepEqual(findRevokedCouponIds(['test-vip'], revokedManifest), ['test-vip']);
 });

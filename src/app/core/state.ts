@@ -8,17 +8,25 @@ export type RabbiFrame = 'classic' | 'gold' | 'crown' | 'emerald';
 export const PARASHA_PRICE_ILS = 10;
 export const PARASHA_PRICE_LABEL_HE = '10 ₪';
 
-/** Google Play Console In-App Product ID (SKU) for unlocking Aliyot 2–7 of a Parasha (e.g. `parasha_bereshit`, `parasha_lech_lecha`). */
-export function playProductIdForPortion(portionId: string): string {
-  return `parasha_${portionId.replace(/-/g, '_')}`;
+export const PLAY_SKU_FULL = 'parasha_unlock';
+
+/**
+ * Google Play Console reusable One-Time Product ID (SKU) for unlocking Aliyot 2–7 of any Parasha (`parasha_unlock`, 10 ₪).
+ */
+export function playProductIdForPortion(_portionId: string): string {
+  return PLAY_SKU_FULL;
 }
 
-/** Maps a Google Play In-App Product ID back to our internal Parasha ID. */
+/** Maps legacy per-Parasha product IDs back to internal Parasha IDs if present. */
 export function portionIdFromPlayProductId(productId: string, knownPortionIds: string[]): string | null {
   for (const id of knownPortionIds) {
-    if (playProductIdForPortion(id) === productId) return id;
+    if (`parasha_${id.replace(/-/g, '_')}` === productId) return id;
   }
   return null;
+}
+
+export function priceLabelForDiscount(_discountPct = 0): string {
+  return PARASHA_PRICE_LABEL_HE;
 }
 
 export interface ChallengePlan {
@@ -62,7 +70,10 @@ export interface StudentProgress {
   streakFreezes: number;
   doubleXpRemaining: number;
   unlockedVerseIds: string[];
-  purchasedPortionIds: string[]; // Parashot unlocked via ₪10 Google Play Billing purchase (Aliyot 2–7)
+  purchasedPortionIds: string[]; // Parashot unlocked via ₪10 Google Play Billing purchase or online coupon (Aliyot 2–7)
+  redeemedCoupons: string[]; // Online coupon IDs redeemed on this device
+  couponUnlockedPortions: Record<string, string[]>; // Map of couponId -> portionIds unlocked by that coupon (so revoking a coupon online re-locks them)
+  activeDiscountPct: number; // Reserved (0)
   ownedYads: YadStyle[];
   equippedYad: YadStyle;
   ownedFrames: RabbiFrame[];
@@ -110,6 +121,9 @@ export const defaultProgress = (): StudentProgress => ({
   doubleXpRemaining: 0,
   unlockedVerseIds: [],
   purchasedPortionIds: [],
+  redeemedCoupons: [],
+  couponUnlockedPortions: {},
+  activeDiscountPct: 0,
   ownedYads: ['silver'],
   equippedYad: 'silver',
   ownedFrames: ['classic'],
@@ -173,6 +187,9 @@ export function migrateProgress(raw: unknown): StudentProgress {
     doubleXpRemaining: pick('doubleXpRemaining', isNonNeg),
     unlockedVerseIds: pick('unlockedVerseIds', isList),
     purchasedPortionIds: pick('purchasedPortionIds', isList),
+    redeemedCoupons: pick('redeemedCoupons', isList),
+    couponUnlockedPortions: pick('couponUnlockedPortions', isMap),
+    activeDiscountPct: pick('activeDiscountPct', isNonNeg),
     ownedYads: pick('ownedYads', (x) => Array.isArray(x) && x.length > 0 && x.every(isYad)),
     equippedYad: pick('equippedYad', isYad),
     ownedFrames: pick('ownedFrames', (x) => Array.isArray(x) && x.length > 0 && x.every(isFrame)),

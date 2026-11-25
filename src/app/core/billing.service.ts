@@ -1,8 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Application, Dialogs, Utils, isAndroid } from '@nativescript/core';
 import { PORTIONS } from './content.service';
+import { fetchOnlineCouponsManifest } from './coupons';
 import {
   PARASHA_PRICE_LABEL_HE,
+  PLAY_SKU_FULL,
   playProductIdForPortion,
   portionIdFromPlayProductId,
 } from './state';
@@ -47,6 +49,18 @@ export class BillingService {
 
   constructor() {
     this.initBridge();
+    setTimeout(() => void this.syncOnlineCouponRevocations(), 2000);
+  }
+
+  /** Checks the online `coupons.json` manifest in the background and revokes any coupons disabled by the owner. */
+  async syncOnlineCouponRevocations(): Promise<void> {
+    if (!this.store.progress().redeemedCoupons?.length) return;
+    try {
+      const manifest = await fetchOnlineCouponsManifest();
+      this.store.syncRevokedCouponsFromManifest(manifest);
+    } catch {
+      // Offline or unreachable on startup — ignore until next online check
+    }
   }
 
   private initBridge(): void {
@@ -59,8 +73,7 @@ export class BillingService {
       setTimeout(() => this.syncOwnedFromBridge(), 1500);
       setTimeout(() => {
         this.syncOwnedFromBridge();
-        const csv = this.allPortionIds.map((id) => playProductIdForPortion(id)).join(',');
-        this.bridge?.queryProductsCsv(csv);
+        this.bridge?.queryProductsCsv(PLAY_SKU_FULL);
       }, 3500);
     } catch (e) {
       console.warn('BillingService init failed:', e);
@@ -78,7 +91,7 @@ export class BillingService {
 
   priceLabelFor(portionId: string): string {
     if (!this.bridge) return PARASHA_PRICE_LABEL_HE;
-    const pid = playProductIdForPortion(portionId);
+    const pid = this.productIdFor(portionId);
     return this.bridge.getFormattedPrice(pid) || PARASHA_PRICE_LABEL_HE;
   }
 
@@ -123,26 +136,77 @@ export class BillingService {
   }
 
   /**
-   * Opens the ₪10 Parasha Paywall dialog and launches the native Google Play Billing purchase sheet
-   * for `parasha_<portionId>`. Returns true if the Parasha is now unlocked.
+   * Opens a coupon input prompt where the user can enter an online-managed free-unlock code (e.g. odedTest).
+   * Validates the code live against the online `coupons.json` manifest.
+   * Returns true if the target Parasha became unlocked.
+   */
+  async promptRedeemCoupon(targetPortion?: { id: string; nameHe: string; bookNameHe?: string }): Promise<boolean> {
+    const portion = targetPortion ?? { id: 'bereshit', nameHe: 'בראשית' };
+    const promptRes = await Dialogs.prompt({
+      title: '🎟️ הזנת קוד קופון',
+      message: `הזינו את קוד הקופון שלכם לפתיחת פרשת ${portion.nameHe} בחינם (דורש חיבור לאינטרנט):`,
+      okButtonText: 'אימות והפעלה',
+      cancelButtonText: 'ביטול',
+      defaultText: '',
+    });
+
+    if (!promptRes.result || !promptRes.text?.trim()) return false;
+
+    this.busy.set(true);
+    let res: Awaited<ReturnType<StoreService['redeemCouponOnline']>>;
+    try {
+      res = await this.store.redeemCouponOnline(promptRes.text, portion.id, this.allPortionIds);
+    } finally {
+      this.busy.set(false);
+    }
+
+    if (!res.ok) {
+      await Dialogs.alert({
+        title: 'קוד קופון לא תקין',
+        message: res.messageHe,
+        okButtonText: 'הבנתי',
+      });
+      return false;
+    }
+
+    await Dialogs.alert({
+      title: '🎉 הקופון הופעל בהצלחה!',
+      message: res.messageHe,
+      okButtonText: 'מעולה!',
+    });
+    return true;
+  }
+
+  /**
+   * Opens the Parasha Paywall dialog (10 ₪ regular, or 5 ₪ with an active 50% coupon) with an option
+   * to enter a coupon code right from the dialog. Returns true if the Parasha is now unlocked.
    */
   async promptUnlockParasha(portion: { id: string; nameHe: string; bookNameHe?: string }): Promise<boolean> {
     if (this.store.isPortionPurchased(portion.id)) return true;
 
-    const sku = playProductIdForPortion(portion.id);
-    const confirm = await Dialogs.confirm({
-      title: `🔓 פתיחת פרשת ${portion.nameHe} – ${PARASHA_PRICE_LABEL_HE}`,
+    const discounted = this.store.hasDiscount50();
+    const priceLabel = this.store.currentPriceLabel();
+    const sku = this.productIdFor(portion.id);
+    const buyAction = discounted ? `💳 רכישה ב־${priceLabel} (50% הנחת קופון!)` : `💳 רכישה ב־${priceLabel} (Google Play)`;
+    const couponAction = '🎟️ יש לי קוד קופון / הנחה';
+
+    const choice = await Dialogs.action({
+      title: `🔓 פתיחת פרשת ${portion.nameHe} – ${priceLabel}`,
       message:
-        `עליית ראשון (כהן) פתוחה בחינם בכל 54 הפרשות!\n\n` +
-        `פתיחת שאר העליות (עליות שני עד שביעי) בפרשת ${portion.nameHe}:\n` +
-        `• תשלום חד־פעמי: ${PARASHA_PRICE_LABEL_HE} בלבד\n` +
-        `• פותח מיד את כל הפסוקים בעליות ב׳–ז׳ של פרשת ${portion.nameHe}\n` +
-        `• רכישה מאובטחת דרך Google Play (מזהה מוצר: ${sku})`,
-      okButtonText: `💳 רכישה ב־${PARASHA_PRICE_LABEL_HE}`,
+        `עליית ראשון (כהן) פתוחה בחינם בכל 54 הפרשות!\n` +
+        `פתיחת כל שאר העליות (שני עד שביעי) בפרשת ${portion.nameHe}:\n` +
+        `• תשלום חד־פעמי: ${priceLabel}${discounted ? ' (במקום 10 ₪!)' : ''}\n` +
+        `• פותח מיד את כל הפסוקים בעליות ב׳–ז׳\n` +
+        `• רכישה מאובטחת ב־Google Play (${sku})`,
       cancelButtonText: 'ביטול',
+      actions: [buyAction, couponAction],
     });
 
-    if (!confirm) return false;
+    if (choice === couponAction) {
+      return await this.promptRedeemCoupon(portion);
+    }
+
+    if (choice !== buyAction) return false;
 
     const outcome = await this.launchGooglePlayPurchase(portion.id, portion.nameHe);
     if (outcome.purchased) {
@@ -159,7 +223,7 @@ export class BillingService {
   /** Launches the native Google Play Billing flow and polls the Java bridge until completion. */
   async launchGooglePlayPurchase(portionId: string, portionNameHe: string): Promise<PurchaseOutcome> {
     this.initBridge();
-    const productId = playProductIdForPortion(portionId);
+    const productId = this.productIdFor(portionId);
     const activity = Application.android?.foregroundActivity || Application.android?.startActivity;
 
     if (!this.bridge || !activity) {
@@ -230,12 +294,13 @@ export class BillingService {
       return { purchased: false };
     }
 
+    const priceLabel = this.store.currentPriceLabel();
     const devUnlock = await Dialogs.confirm({
-      title: `חיבור Google Play Billing (${PARASHA_PRICE_LABEL_HE})`,
+      title: `חיבור Google Play Billing (${priceLabel})`,
       message:
         `שירות Google Play Billing הופעל עבור פרשת ${portionNameHe}.\n` +
         `מזהה מוצר (Product ID): ${productId}\n` +
-        `מחיר: ${PARASHA_PRICE_LABEL_HE}\n` +
+        `מחיר: ${priceLabel}\n` +
         `סטטוס מ־Google Play: ${rawState}\n\n` +
         `המוצר טרם פורסם ב־Google Play Console או שה־APK מותקן בבדיקה מקומית (Build: DEBUG).\n` +
         `האם לפתוח את פרשת ${portionNameHe} כעת במצב בדיקת מפתח?`,

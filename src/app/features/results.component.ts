@@ -146,7 +146,7 @@ const MATURITY_HE = { validated: 'מדויק', experimental: 'מדויק', unava
           }
           @if (canAdvance() && next) {
             <Button class="btn btn-cta" textWrap="true"
-              [text]="nextNeedsPurchase() ? '🔒 המשך לעלייה שנייה (פתיחת הפרשה ב־' + priceLabel + ')' : '▶ לפסוק הבא'"
+              [text]="nextNeedsPurchase() ? '🔒 המשך לעלייה שנייה (פתיחת הפרשה ב־' + store.currentPriceLabel() + ')' : '▶ לפסוק הבא'"
               (tap)="goNext()"></Button>
           }
           <Button class="btn-link" textWrap="true" text="לרשימת העליות והפסוקים" (tap)="nav.navigate(['/portion', portionMeta.id], { queryParams: { aliyah: verse.aliyah } })"></Button>
@@ -162,7 +162,7 @@ export class ResultsComponent implements OnDestroy {
   private audio = inject(AudioService);
   private billing = inject(BillingService);
   private content = inject(ContentService);
-  private store = inject(StoreService);
+  readonly store = inject(StoreService);
   readonly priceLabel = PARASHA_PRICE_LABEL_HE;
   readonly playback = new Playback(this.audio.player);
   readonly chartW = Math.floor(Screen.mainScreen.widthDIPs - 32);

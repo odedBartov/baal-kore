@@ -41,18 +41,21 @@ import { GamificationBarComponent } from '../ui/gamification-bar.component';
         </FlexboxLayout>
       </ScrollView>
 
-      <!-- Current Aliyah Summary or ₪10 Paywall Card -->
+      <!-- Current Aliyah Summary or ₪10/₪5 Paywall Card -->
       @if (currentAliyah(); as ca) {
         @if (ca.isPaywalled) {
           <StackLayout row="2" class="paywall-card">
             <Label class="paywall-title" textWrap="true" [text]="'🔒 ' + ca.nameHe + ' – המשך פרשת ' + portion.nameHe"></Label>
             <Label class="paywall-sub" textWrap="true"
-              [text]="'עלייה ראשונה (כהן) פתוחה תמיד בחינם! פתחו את כל שאר הפרשה (עליות שני עד שביעי – ' + remainingVersesCount() + ' פסוקים) בתשלום חד־פעמי של ' + priceLabel + ' דרך Google Play.'"></Label>
+              [text]="'עלייה ראשונה (כהן) פתוחה תמיד בחינם! פתחו את כל שאר הפרשה (עליות שני עד שביעי – ' + remainingVersesCount() + ' פסוקים) בתשלום חד־פעמי של ' + store.currentPriceLabel() + (store.hasDiscount50() ? ' (50% הנחת קופון!)' : '') + ' דרך Google Play.'"></Label>
             <Button class="btn-paywall" textWrap="true"
-              [text]="billing.busy() ? 'מתחבר ל־Google Play…' : '💳 פתיחת כל פרשת ' + portion.nameHe + ' (עליות ב׳–ז׳) – ' + priceLabel"
+              [text]="billing.busy() ? 'מתחבר ל־Google Play…' : '💳 פתיחת כל פרשת ' + portion.nameHe + ' (עליות ב׳–ז׳) – ' + store.currentPriceLabel()"
               [isEnabled]="!billing.busy()"
               (tap)="unlockParasha()"></Button>
-            <Button class="btn-link" textWrap="true" color="#ffd978" text="🔄 כבר רכשתם? שחזור רכישות מ־Google Play" (tap)="restorePurchases()"></Button>
+            <GridLayout columns="*, *" marginTop="4">
+              <Button col="1" class="btn-link" textWrap="true" color="#ffd978" text="🎟️ הזנת קוד קופון / הנחה" (tap)="redeemCoupon()"></Button>
+              <Button col="0" class="btn-link" textWrap="true" color="#c7d9f0" text="🔄 שחזור רכישות" (tap)="restorePurchases()"></Button>
+            </GridLayout>
           </StackLayout>
         } @else {
           <StackLayout row="2" class="aliyah-banner-card">
@@ -165,7 +168,7 @@ export class VerseListComponent {
                 ? v.aliyah === 1
                   ? 'פתוח בחינם – הקש לקריאה'
                   : 'פתוח לתרגול – הקש לקריאה'
-                : `נעול – הקש לפתיחת כל פרשת ${this.portion.nameHe} ב־${this.priceLabel}`,
+                : `נעול – הקש לפתיחת כל פרשת ${this.portion.nameHe} ב־${this.store.currentPriceLabel()}`,
         ]
           .filter(Boolean)
           .join(' · ');
@@ -199,6 +202,14 @@ export class VerseListComponent {
 
   async unlockParasha(): Promise<void> {
     await this.billing.promptUnlockParasha({
+      id: this.portionId,
+      nameHe: this.portion.nameHe,
+      bookNameHe: this.bookNameHe,
+    });
+  }
+
+  async redeemCoupon(): Promise<void> {
+    await this.billing.promptRedeemCoupon({
       id: this.portionId,
       nameHe: this.portion.nameHe,
       bookNameHe: this.bookNameHe,

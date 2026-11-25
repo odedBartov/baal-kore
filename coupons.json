@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-25T16:46:53.767Z",
+  "coupons": [
+    {
+      "id": "coupon-oded-25aac9",
+      "sha256": "25aac9692a272f5f347a6e472093298718ac91c18f93dae51a59bb738c894744",
+      "kind": "free-parasha",
+      "active": true,
+      "singleUse": false,
+      "descriptionHe": "הקופון אומת אונליין! כל העליות בפרשה נפתחו בחינם (100% הנחה)!"
+    }
+  ]
+}

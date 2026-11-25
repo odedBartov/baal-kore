@@ -13,6 +13,7 @@
     "validate-analyzers": "node --max-old-space-size=8192 --import tsx scripts/validate-analyzers.ts",
     "make-validation-files": "node --import tsx scripts/make-validation-files.ts",
     "build-art": "node scripts/build-art.mjs",
+    "make-coupon": "node --import tsx scripts/make-coupon.ts",
     "validate-melody": "node --max-old-space-size=8192 --import tsx scripts/validate-melody.ts",
     "validate-niqqud": "node --max-old-space-size=8192 --import tsx scripts/validate-niqqud.ts"
   },

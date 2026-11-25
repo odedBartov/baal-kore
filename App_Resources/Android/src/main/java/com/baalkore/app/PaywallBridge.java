@@ -8,6 +8,7 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.ConsumeParams;
 import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
@@ -162,7 +163,8 @@ public final class PaywallBridge implements PurchasesUpdatedListener {
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
                 .setProductList(productList)
                 .build();
-        client.queryProductDetailsAsync(params, (billingResult, detailsList) -> {
+        client.queryProductDetailsAsync(params, (billingResult, queryResult) -> {
+            List<ProductDetails> detailsList = queryResult != null ? queryResult.getProductDetailsList() : null;
             if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && detailsList != null) {
                 for (ProductDetails pd : detailsList) {
                     productCache.put(pd.getProductId(), pd);
@@ -207,13 +209,14 @@ public final class PaywallBridge implements PurchasesUpdatedListener {
                 .setProductList(list)
                 .build();
 
-        client.queryProductDetailsAsync(params, (billingResult, detailsList) -> {
+        client.queryProductDetailsAsync(params, (billingResult, queryResult) -> {
             lastResponseCode = billingResult.getResponseCode();
             lastDebugMessage = billingResult.getDebugMessage() != null ? billingResult.getDebugMessage() : "";
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 purchaseState = "ERROR:" + billingResult.getResponseCode() + ":" + lastDebugMessage;
                 return;
             }
+            List<ProductDetails> detailsList = queryResult != null ? queryResult.getProductDetailsList() : null;
             if (detailsList == null || detailsList.isEmpty()) {
                 // The product ID has not been created/activated in Google Play Console yet.
                 purchaseState = "PRODUCT_NOT_IN_PLAY_CONSOLE:" + productId;
@@ -282,14 +285,14 @@ public final class PaywallBridge implements PurchasesUpdatedListener {
                 ownedProducts.add(pid);
                 purchaseState = "PURCHASED:" + pid;
             }
-            if (!purchase.isAcknowledged()) {
-                AcknowledgePurchaseParams ackParams = AcknowledgePurchaseParams.newBuilder()
-                        .setPurchaseToken(purchase.getPurchaseToken())
-                        .build();
-                client.acknowledgePurchase(ackParams, billingResult -> {
-                    lastResponseCode = billingResult.getResponseCode();
-                });
-            }
+            // Consume the reusable Parasha unlock token so Google Play acknowledges the payment AND allows
+            // the user to purchase additional Parashot with the same `parasha_unlock` / `parasha_unlock_5ils` SKU.
+            ConsumeParams consumeParams = ConsumeParams.newBuilder()
+                    .setPurchaseToken(purchase.getPurchaseToken())
+                    .build();
+            client.consumeAsync(consumeParams, (billingResult, purchaseToken) -> {
+                lastResponseCode = billingResult.getResponseCode();
+            });
         } else if (state == Purchase.PurchaseState.PENDING) {
             purchaseState = "PENDING";
         }

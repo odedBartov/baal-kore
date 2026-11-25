@@ -82,20 +82,21 @@ import { RabbiComponent } from '../ui/rabbi.component';
             (tap)="openAliyah(1)"></Button>
           @if (!summary().isPurchased) {
             <Button class="btn-paywall" textWrap="true" marginTop="6"
-              [text]="'💳 פתיחת כל פרשת ' + selectedPortionMeta().nameHe + ' (עליות ב׳–ז׳) – ' + priceLabel"
+              [text]="'💳 פתיחת כל פרשת ' + selectedPortionMeta().nameHe + ' (עליות ב׳–ז׳) – ' + store.currentPriceLabel() + (store.hasDiscount50() ? ' (50% הנחה!)' : '')"
               (tap)="unlockSelectedParasha()"></Button>
+            <Button class="btn-link" textWrap="true" color="#ffd978" text="🎟️ יש לכם קוד קופון או הנחה? לחצו כאן" (tap)="redeemCoupon()"></Button>
           }
         </StackLayout>
 
         <!-- Breakdown by 7 Aliyot with Average Grade per Aliyah -->
-        <Label class="section" textWrap="true" [text]="'📜 שבע העליות בפרשת ' + selectedPortionMeta().nameHe + (summary().isPurchased ? ' (הכול פתוח ✓)' : ' (עלייה א׳ חינם · ב׳–ז׳ ב־' + priceLabel + ')')"></Label>
+        <Label class="section" textWrap="true" [text]="'📜 שבע העליות בפרשת ' + selectedPortionMeta().nameHe + (summary().isPurchased ? ' (הכול פתוח ✓)' : ' (עלייה א׳ חינם · ב׳–ז׳ ב־' + store.currentPriceLabel() + ')')"></Label>
         @for (a of summary().aliyot; track a.aliyah) {
           <GridLayout columns="auto, *, auto" class="card aliyah-card" (tap)="openAliyah(a.aliyah)">
             <!-- Left: Average Score or Free/Paywall Badge -->
             <StackLayout col="0" class="aliyah-score-box" verticalAlignment="center">
               @if (a.isPaywalled) {
                 <Label class="aliyah-score-num" textWrap="true" text="🔒"></Label>
-                <Label class="aliyah-score-lbl" textWrap="true" [text]="priceLabel"></Label>
+                <Label class="aliyah-score-lbl" textWrap="true" [text]="store.currentPriceLabel()"></Label>
               } @else if (a.averageScore !== null) {
                 <Label class="aliyah-score-num" textWrap="true" [text]="'' + a.averageScore"></Label>
                 <Label class="aliyah-score-lbl" textWrap="true" text="ממוצע"></Label>
@@ -111,7 +112,7 @@ import { RabbiComponent } from '../ui/rabbi.component';
             <!-- Middle: Aliyah info & progress bar -->
             <StackLayout col="1" verticalAlignment="center" marginRight="10" marginLeft="10">
               <Label class="cat-name" textWrap="true" [text]="(a.hasCrown ? '👑 ' : a.isFree ? '🎁 ' : a.isPaywalled ? '🔒 ' : '') + a.nameHe + (a.isFree ? ' · חינם' : '')"></Label>
-              <Label class="meta" textWrap="true" [text]="a.rangeHe + ' · ' + a.doneVerses + '/' + a.totalVerses + ' פסוקים · ' + (a.isPaywalled ? 'נעול – פתיחת כל הפרשה ב־' + priceLabel : a.levelIcon + ' ' + a.levelTitleHe)"></Label>
+              <Label class="meta" textWrap="true" [text]="a.rangeHe + ' · ' + a.doneVerses + '/' + a.totalVerses + ' פסוקים · ' + (a.isPaywalled ? 'נעול – פתיחת כל הפרשה ב־' + store.currentPriceLabel() : a.levelIcon + ' ' + a.levelTitleHe)"></Label>
               <GridLayout class="meter" height="8">
                 <StackLayout class="meter-fill" horizontalAlignment="right" [width]="(a.progressPct / 100) * 200"></StackLayout>
               </GridLayout>
@@ -132,7 +133,7 @@ import { RabbiComponent } from '../ui/rabbi.component';
             </StackLayout>
             <StackLayout col="1" verticalAlignment="center" marginRight="10" marginLeft="10">
               <Label class="portion-name" textWrap="true" [text]="'פרשת ' + item.meta.nameHe"></Label>
-              <Label class="meta" textWrap="true" [text]="item.meta.rangeHe + ' · ' + item.summary.doneVerses + '/' + item.meta.totalVerses + ' פסוקים · ' + (item.summary.isPurchased ? '✓ כל 7 העליות פתוחות' : '🎁 עלייה א׳ חינם · ב׳–ז׳ ב־' + priceLabel)"></Label>
+              <Label class="meta" textWrap="true" [text]="item.meta.rangeHe + ' · ' + item.summary.doneVerses + '/' + item.meta.totalVerses + ' פסוקים · ' + (item.summary.isPurchased ? '✓ כל 7 העליות פתוחות' : '🎁 עלייה א׳ חינם · ב׳–ז׳ ב־' + store.currentPriceLabel())"></Label>
             </StackLayout>
             <Label col="2" class="aliyah-num-circle" [text]="num(item.orderInBook)"></Label>
           </GridLayout>
@@ -210,5 +211,9 @@ export class PortionsComponent {
 
   async unlockSelectedParasha(): Promise<void> {
     await this.billing.promptUnlockParasha(this.selectedPortionMeta());
+  }
+
+  async redeemCoupon(): Promise<void> {
+    await this.billing.promptRedeemCoupon(this.selectedPortionMeta());
   }
 }

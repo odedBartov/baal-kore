@@ -53,14 +53,14 @@ import { GamificationBarComponent } from '../ui/gamification-bar.component';
           </StackLayout>
         </GridLayout>
 
-        <!-- Parasha Full Access (Google Play ₪10 Paywall) -->
-        <Label class="section" textWrap="true" text="📜 פתיחת פרשות מלאות (Google Play)"></Label>
+        <!-- Parasha Full Access & Coupons (Google Play ₪10 / ₪5 Paywall) -->
+        <Label class="section" textWrap="true" text="📜 פתיחת פרשות מלאות וקופונים"></Label>
         @if (!summary().isPurchased) {
           <GridLayout columns="auto, *" class="card shop-item">
-            <Button col="0" class="btn-small btn-primary" textWrap="true" [text]="priceLabel + ' פתיחה'" (tap)="unlockActiveParasha()"></Button>
+            <Button col="0" class="btn-small btn-primary" textWrap="true" [text]="store.currentPriceLabel() + ' פתיחה'" (tap)="unlockActiveParasha()"></Button>
             <StackLayout col="1" verticalAlignment="center">
               <Label class="cat-name" textWrap="true" [text]="'🔓 פתיחת כל פרשת ' + activePortion().nameHe + ' (עליות ב׳–ז׳)'"></Label>
-              <Label class="meta" textWrap="true" [text]="'עלייה ראשונה פתוחה תמיד בחינם. פתחו את כל שאר הפרשה בתשלום חד־פעמי של ' + priceLabel + ' דרך Google Play.'"></Label>
+              <Label class="meta" textWrap="true" [text]="'עלייה ראשונה פתוחה תמיד בחינם. פתחו את כל שאר הפרשה בתשלום חד־פעמי של ' + store.currentPriceLabel() + (store.hasDiscount50() ? ' (אחרי 50% הנחת קופון!)' : '') + ' דרך Google Play.'"></Label>
             </StackLayout>
           </GridLayout>
         } @else {
@@ -72,7 +72,10 @@ import { GamificationBarComponent } from '../ui/gamification-bar.component';
             </StackLayout>
           </GridLayout>
         }
-        <Button class="btn-link" textWrap="true" text="🔄 שחזור רכישות מ־Google Play" (tap)="restorePurchases()"></Button>
+        <GridLayout columns="*, *" class="buttons">
+          <Button col="1" class="btn" textWrap="true" text="🎟️ הזנת קוד קופון / הנחה" (tap)="redeemCoupon()"></Button>
+          <Button col="0" class="btn" textWrap="true" text="🔄 שחזור רכישות" (tap)="restorePurchases()"></Button>
+        </GridLayout>
 
         <!-- Custom Yad Pointers -->
         <Label class="section" textWrap="true" text="👉 עיצוב היד הקוראת (מוצגת בגרף ובקריאה)"></Label>
@@ -141,6 +144,11 @@ export class ShopComponent {
   async restorePurchases(): Promise<void> {
     const res = await this.billing.restorePurchases();
     this.message.set(res.messageHe);
+  }
+
+  async redeemCoupon(): Promise<void> {
+    const ok = await this.billing.promptRedeemCoupon(this.activePortion());
+    if (ok) this.message.set(`🎉 הקופון הופעל בהצלחה עבור פרשת ${this.activePortion().nameHe}!`);
   }
 
   selectYad(id: YadStyle, nameHe: string, price: number): void {

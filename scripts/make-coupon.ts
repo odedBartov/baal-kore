@@ -1,15 +1,16 @@
 // CLI tool for managing online Ba'al Kore coupons in `coupons.json`.
 // Coupons are stored as salted SHA-256 hashes in `coupons.json` so the secret keywords
-// are hidden even in the public GitHub repository, and can be created or revoked anytime.
+// are hidden in the public GitHub repository, while `.coupons-local.json` (git-ignored)
+// remembers the plain keyword on your computer so you can list them easily.
 //
 // Usage examples:
-//   npm run make-coupon                                   -> Lists all coupons in coupons.json
-//   npm run make-coupon -- add odedTest                   -> Adds/updates 100% free Parasha coupon "odedTest"
-//   npm run make-coupon -- add vip2026 free-all           -> Adds/updates 100% free All-54-Parashot VIP coupon "vip2026"
-//   npm run make-coupon -- add gift1 free-parasha single  -> Adds a single-use 1-Parasha coupon "gift1"
-//   npm run make-coupon -- revoke odedTest                -> Revokes coupon "odedTest" (sets active: false)
-//   npm run make-coupon -- delete odedTest                -> Completely removes coupon "odedTest" from coupons.json
-//   Add `--push` at the end of any command to automatically git commit & push `coupons.json` to GitHub!
+//   npm run make-coupon                                   -> Lists all coupons you have
+//   npm run make-coupon -- add <CODE> single              -> Adds a SINGLE-USE 1-Parasha coupon
+//   npm run make-coupon -- add <CODE> multi               -> Adds a MULTI-USE 1-Parasha coupon
+//   npm run make-coupon -- add <CODE> single free-all     -> Adds a SINGLE-USE All-54-Parashot VIP coupon
+//   npm run make-coupon -- revoke <CODE>                  -> Revokes a coupon (sets active: false)
+//   npm run make-coupon -- delete <CODE>                  -> Completely deletes a coupon
+//   Add `--push` to any command to automatically commit & push `coupons.json` to GitHub!
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -23,6 +24,7 @@ import {
 } from '../src/app/core/coupons';
 
 const MANIFEST_PATH = join(import.meta.dirname, '..', 'coupons.json');
+const LOCAL_NAMES_PATH = join(import.meta.dirname, '..', '.coupons-local.json');
 
 function loadManifest(): OnlineCouponsManifest {
   if (!existsSync(MANIFEST_PATH)) {
@@ -33,6 +35,19 @@ function loadManifest(): OnlineCouponsManifest {
     };
   }
   return JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as OnlineCouponsManifest;
+}
+
+function loadLocalNames(): Record<string, string> {
+  if (!existsSync(LOCAL_NAMES_PATH)) return {};
+  try {
+    return JSON.parse(readFileSync(LOCAL_NAMES_PATH, 'utf8')) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalNames(names: Record<string, string>): void {
+  writeFileSync(LOCAL_NAMES_PATH, JSON.stringify(names, null, 2) + '\n', 'utf8');
 }
 
 function saveManifest(manifest: OnlineCouponsManifest, autoPush: boolean, commitMsg: string): void {
@@ -46,7 +61,7 @@ function saveManifest(manifest: OnlineCouponsManifest, autoPush: boolean, commit
     execSync('git push origin main', { stdio: 'inherit' });
     console.log(`✓ Live online at: ${ONLINE_COUPONS_URL}`);
   } else {
-    console.log('Tip: Run `git add coupons.json && git commit -m "Update coupons" && git push` (or pass `--push`) to publish online.');
+    console.log('Tip: Add `--push` (or run `git add coupons.json && git commit -m "Update coupons" && git push`) to publish online.');
   }
 }
 
@@ -56,19 +71,21 @@ const args = rawArgs.filter((a) => a !== '--push');
 
 const cmd = (args[0] ?? 'list').toLowerCase();
 const manifest = loadManifest();
+const localNames = loadLocalNames();
 
 if (cmd === 'list') {
-  console.log(`=== Online Coupons Manifest (${MANIFEST_PATH}) ===`);
-  console.log(`Remote URL: ${ONLINE_COUPONS_URL}`);
-  console.log(`Updated At: ${manifest.updatedAt ?? 'never'}\n`);
+  console.log(`=== Your Online Coupons (${MANIFEST_PATH}) ===`);
+  console.log(`Live URL: ${ONLINE_COUPONS_URL}`);
+  console.log(`Updated:  ${manifest.updatedAt ?? 'never'}\n`);
   if (!manifest.coupons.length) {
     console.log('  (no coupons configured)');
   } else {
     for (const c of manifest.coupons) {
+      const keyword = localNames[c.id] ?? c.code ?? '(hashed)';
       const status = c.active ? '🟢 ACTIVE ' : '🔴 REVOKED';
-      const use = c.singleUse ? 'single-use' : 'multi-use';
-      const exp = c.expiresAt ? ` (expires ${c.expiresAt})` : '';
-      console.log(`  ${status} | id: ${c.id.padEnd(18)} | kind: ${c.kind.padEnd(13)} | ${use}${exp}`);
+      const use = c.singleUse ? '1x SINGLE-USE' : '∞  MULTI-USE ';
+      const scope = c.kind === 'free-all' ? 'All 54 Parashot' : '1 Parasha      ';
+      console.log(`  ${status} | Keyword: ${keyword.padEnd(14)} | ${use} | ${scope} | ID: ${c.id}`);
     }
   }
   process.exit(0);
@@ -77,13 +94,15 @@ if (cmd === 'list') {
 if (cmd === 'add') {
   const keyword = args[1];
   if (!keyword) {
-    console.error('Usage: npm run make-coupon -- add <CODE> [free-parasha|free-all] [single|multi] [--push]');
+    console.error('Usage: npm run make-coupon -- add <CODE> [single|multi] [free-parasha|free-all] [--push]');
     process.exit(1);
   }
-  const kindArg = (args[2] ?? 'free-parasha').toLowerCase();
-  const kind: CouponKind = kindArg === 'free-all' || kindArg === 'vip' ? 'free-all' : 'free-parasha';
-  const useArg = (args[3] ?? 'multi').toLowerCase();
-  const singleUse = useArg === 'single' || useArg === 'true' || useArg === '1';
+  const rest = args.slice(2).map((s) => s.toLowerCase());
+  const singleUse = rest.includes('single') || rest.includes('1') || rest.includes('true');
+  const kind: CouponKind =
+    rest.includes('free-all') || rest.includes('vip') || rest.includes('all')
+      ? 'free-all'
+      : 'free-parasha';
 
   const normalized = normalizeCouponInput(keyword);
   const sha256 = hashCouponCode(normalized);
@@ -104,11 +123,13 @@ if (cmd === 'add') {
 
   if (existingIdx >= 0) {
     manifest.coupons[existingIdx] = entry;
-    console.log(`✓ Updated & activated coupon "${keyword}" (id: ${id}, kind: ${kind}, singleUse: ${singleUse})`);
+    console.log(`✓ Updated & activated coupon "${keyword}" (${singleUse ? 'SINGLE-USE' : 'MULTI-USE'}, ${kind})`);
   } else {
     manifest.coupons.push(entry);
-    console.log(`✓ Added online coupon "${keyword}" (id: ${id}, kind: ${kind}, singleUse: ${singleUse})`);
+    console.log(`✓ Created online coupon "${keyword}" (${singleUse ? 'SINGLE-USE' : 'MULTI-USE'}, ${kind})`);
   }
+  localNames[id] = keyword;
+  saveLocalNames(localNames);
   saveManifest(manifest, autoPush, `Update online coupon ${id}`);
   process.exit(0);
 }
@@ -126,7 +147,8 @@ if (cmd === 'revoke' || cmd === 'disable') {
     if (c.id === target || c.sha256 === sha256 || (c.code && normalizeCouponInput(c.code) === norm)) {
       c.active = false;
       found++;
-      console.log(`🔴 Revoked coupon (id: ${c.id})`);
+      const kw = localNames[c.id] ?? target;
+      console.log(`🔴 Revoked coupon "${kw}" (ID: ${c.id})`);
     }
   }
   if (!found) {
@@ -146,6 +168,11 @@ if (cmd === 'delete' || cmd === 'remove') {
   const sha256 = hashCouponCode(target);
   const norm = normalizeCouponInput(target);
   const before = manifest.coupons.length;
+  for (const c of manifest.coupons) {
+    if (c.id === target || c.sha256 === sha256 || (c.code && normalizeCouponInput(c.code) === norm)) {
+      delete localNames[c.id];
+    }
+  }
   manifest.coupons = manifest.coupons.filter(
     (c) => !(c.id === target || c.sha256 === sha256 || (c.code && normalizeCouponInput(c.code) === norm)),
   );
@@ -153,6 +180,7 @@ if (cmd === 'delete' || cmd === 'remove') {
     console.error(`No matching coupon found for "${target}".`);
     process.exit(1);
   }
+  saveLocalNames(localNames);
   console.log(`🗑️ Deleted coupon "${target}" from coupons.json`);
   saveManifest(manifest, autoPush, `Delete online coupon`);
   process.exit(0);

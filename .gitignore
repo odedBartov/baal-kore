@@ -37,8 +37,9 @@ test-data/
 App_Resources/Android/src/main/assets/models/
 App_Resources/Android/model_assets/src/main/assets/models/
 
-# Signing keystores & compiled bundles
+# Signing keystores, local coupon names & compiled bundles
 keystore/
+.coupons-local.json
 *.jks
 *.apk
 *.aab

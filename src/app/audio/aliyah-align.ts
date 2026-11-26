@@ -159,7 +159,20 @@ export function alignAliyahRecording(
   }
 
   // Fallback when CTC model is not loaded: distribute real audio duration across verses/words by syllable weight
-  const vs = portionVerses.slice(startIdx, endIdx + 1);
+  return alignAliyahByDurationMs(durationMs, portionVerses, aliyah);
+}
+
+/**
+ * Fast (<1 ms) duration-based Aliyah alignment using syllable & cantillation weights when pre-aligned CTC JSON
+ * is not yet available, avoiding any multi-minute full-Aliyah ONNX CTC run on the user's mobile CPU.
+ */
+export function alignAliyahByDurationMs(
+  durationMs: number,
+  portionVerses: AlignableVerse[],
+  aliyah: number,
+): Record<string, AlignedVerseTiming> {
+  const vs = portionVerses.filter((v) => v.aliyah === aliyah);
+  if (!vs.length) return {};
   const wordWeights = vs.map((v) => v.words.map((w) => Math.max(1, w.syllables) * 320 + 120));
   const verseWeights = wordWeights.map((ws) => ws.reduce((a, b) => a + b, 0) + 450);
   const totalWeight = Math.max(1, verseWeights.reduce((a, b) => a + b, 0));

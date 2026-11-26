@@ -3,7 +3,7 @@
 import '@nativescript/core/globals';
 import { getFileAccess } from '@nativescript/core';
 import { synthesizeCantillationWav, SYNTH_SAMPLE_RATE } from './cantillation-synth';
-import { alignAliyahRecording, type AlignableVerse, type AlignedVerseTiming } from './aliyah-align';
+import { alignAliyahByDurationMs, type AlignableVerse, type AlignedVerseTiming } from './aliyah-align';
 import { asaelCommonsUrl, preAlignedTimingsUrl } from '../torah/asael-catalog';
 import { decodeWav, encodeWav, resample } from './wav';
 import { detectPitch, medianVoicedHz, signalQuality, type PitchFrame, type SignalQuality } from './pitch';
@@ -27,6 +27,7 @@ declare const com: {
       AudioDecoder: {
         decodeToWav(src: string, dst: string, startMs: number, endMs: number): number;
         downloadIfMissing(url: string, dst: string): boolean;
+        getDurationMs(src: string): number;
         readTextFile(path: string): string;
         writeTextFile(path: string, content: string): void;
       };
@@ -230,21 +231,8 @@ function prepareAsaelVerse(req: Extract<WorkerRequest, { type: 'prepare-asael-ve
     const ok = com.baalkore.app.AudioDecoder.downloadIfMissing(url, ogaPath);
     if (!ok) throw new Error(`לא ניתן להוריד את הקלטת העלייה (${req.portionId} עלייה ${al}). בדקו חיבור לאינטרנט.`);
 
-    const fullWavPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}-full.wav`;
-    com.baalkore.app.AudioDecoder.decodeToWav(ogaPath, fullWavPath, 0, 0);
-    const x = read16k(fullWavPath);
-    const wav16kPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}-16k.wav`;
-    writeBytes(wav16kPath, encodeWav(x, RATE));
-    const ctc = ctcFor(wav16kPath);
-    try {
-      new java.io.File(fullWavPath).delete();
-      new java.io.File(wav16kPath).delete();
-      new java.io.File(wav16kPath + '.lp').delete();
-    } catch {
-      // ignore cleanup errors
-    }
-
-    const aligned = alignAliyahRecording(x, ctc, req.portionVerses, al);
+    const durationMs = Number(com.baalkore.app.AudioDecoder.getDurationMs(ogaPath)) || 180000;
+    const aligned = alignAliyahByDurationMs(durationMs, req.portionVerses, al);
     Object.assign(timingsMap, aligned);
     writeJsonMap(timingsPath, timingsMap);
   };

@@ -64,7 +64,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
             <Button class="btn btn-primary" textWrap="true" text="המשך לפסוק" (tap)="finish()"></Button>
           } @else {
             <GridLayout columns="*, *" class="buttons">
-              <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'demo' ? 'עצירה' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
+              <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'demo' ? 'עצירה' : preparing() ? 'מכין דוגמה…' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
               <Button col="0" class="btn btn-record" textWrap="true" [text]="rec.active() ? 'סיום' : 'הקלטה'" (tap)="record()" [isEnabled]="heard() && !busy()"></Button>
             </GridLayout>
             @if (rec.active()) {
@@ -132,6 +132,7 @@ export class LessonComponent implements OnDestroy {
   readonly index = signal(0);
   readonly unit = computed(() => this.units[this.index()] ?? null);
   readonly line = signal<RabbiLine | null>(null);
+  readonly preparing = signal(false);
   readonly busy = signal(false);
   readonly heard = signal(false);
   readonly check = signal<LessonCheck | null>(null);
@@ -139,6 +140,7 @@ export class LessonComponent implements OnDestroy {
   readonly error = signal<string | null>(null);
   private refContour = signal<ContourResult | null>(null);
   private clip = signal<{ path: string; startMs: number; endMs: number } | null>(null); // the phrase alone, cut from the verse
+  private clipPromise: Promise<{ path: string; startMs: number; endMs: number } | null> | null = null;
   private readonly mine = this.audio.scratchWav('lesson');
 
   readonly segment = computed(() => this.clip() ?? { startMs: 0, endMs: 1 });
@@ -204,23 +206,35 @@ export class LessonComponent implements OnDestroy {
     this.line.set(rabbiSays({ kind: 'lesson-intro', newTaamim: u.newTaamim, words: u.wordIndexes.map((w) => this.verse.words[w].text).join(' ') }));
     this.clip.set(null);
     this.refContour.set(null);
-    if (this.ref)
-      this.audio
+    this.clipPromise = null;
+    if (this.ref) {
+      this.preparing.set(true);
+      this.clipPromise = this.audio
         .phraseClip(this.verse.id, this.ref, u.wordIndexes[0], u.wordIndexes[u.wordIndexes.length - 1])
-        .then(async (c) => {
-          if (this.unit() !== u) return;
-          const contour = await this.audio.contour(c.path);
-          if (this.unit() === u) {
-            this.clip.set(c);
-            this.refContour.set(contour);
-          }
+        .then((c) => {
+          if (this.unit() !== u) return null;
+          this.clip.set(c);
+          void this.audio.contour(c.path).then((contour) => {
+            if (this.unit() === u) this.refContour.set(contour);
+          });
+          return c;
         })
-        .catch((e) => this.error.set(`לא הצלחתי להכין את הדוגמה: ${e}`));
+        .catch((e) => {
+          this.error.set(`לא הצלחתי להכין את הדוגמה: ${e}`);
+          return null;
+        })
+        .finally(() => {
+          if (this.unit() === u) this.preparing.set(false);
+        });
+    }
   }
 
-  demo(): void {
+  async demo(): Promise<void> {
     if (this.playback.playing()) return this.playback.stop();
-    const c = this.clip();
+    let c = this.clip();
+    if (!c && this.clipPromise) {
+      c = await this.clipPromise;
+    }
     if (!c) return;
     this.line.set(rabbiSays({ kind: 'listening' }));
     this.playback.play(c.path, 'demo', 0, null, () => this.heard.set(true));

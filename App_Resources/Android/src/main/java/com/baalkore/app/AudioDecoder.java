@@ -255,8 +255,6 @@ public final class AudioDecoder {
                 }
             }
 
-            masterVocalTrack(rawSamples, sampleCount, rate);
-
             try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dstFile), 1 << 16)) {
                 out.write(new byte[44]);
                 byte[] pcm = new byte[Math.min(sampleCount, 16384) * 2];

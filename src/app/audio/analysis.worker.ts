@@ -4,7 +4,7 @@ import '@nativescript/core/globals';
 import { getFileAccess } from '@nativescript/core';
 import { synthesizeCantillationWav, SYNTH_SAMPLE_RATE } from './cantillation-synth';
 import { alignAliyahByDurationMs, type AlignableVerse, type AlignedVerseTiming } from './aliyah-align';
-import { asaelCommonsUrl, preAlignedTimingsUrl } from '../torah/asael-catalog';
+import { studioAudioUrl, preAlignedTimingsUrl } from '../torah/asael-catalog';
 import { decodeWav, encodeWav, resample } from './wav';
 import { detectPitch, medianVoicedHz, signalQuality, type PitchFrame, type SignalQuality } from './pitch';
 import { mfcc } from './mfcc';
@@ -50,6 +50,7 @@ export type WorkerRequest =
       verseId: string;
       dstWav: string;
       cacheDir: string;
+      appDir: string;
       portionVerses: AlignableVerse[];
     }
   | { type: 'synth-reference'; dst: string; verse: VerseData }
@@ -210,28 +211,30 @@ function writeJsonMap(filePath: string, data: Record<string, AlignedVerseTiming>
  * caches the timings for the whole Aliyah, and extracts the requested verse WAV.
  */
 function prepareAsaelVerse(req: Extract<WorkerRequest, { type: 'prepare-asael-verse' }>): PreparedVerseResult {
-  const timingsPath = `${req.cacheDir}/timings-${req.portionId}.json`;
-  const timingsFile = new java.io.File(timingsPath);
+  const bundledTimingsPath = `${req.appDir}/assets/reference-timings/${req.portionId}.json`;
+  const timingsPath = `${req.cacheDir}/timings-pt-${req.portionId}.json`;
 
-  // 1. Try downloading pre-aligned timings JSON from GitHub if we don't have local timings yet
-  if (!timingsFile.exists() || timingsFile.length() < 10) {
-    try {
-      com.baalkore.app.AudioDecoder.downloadIfMissing(preAlignedTimingsUrl(req.portionId), timingsPath);
-    } catch {
-      // Ignore network/404 if pre-aligned file is not on GitHub yet; we will align on-device below.
+  let timingsMap = readJsonMap(bundledTimingsPath);
+  if (!Object.keys(timingsMap).length) {
+    const timingsFile = new java.io.File(timingsPath);
+    if (!timingsFile.exists() || timingsFile.length() < 10) {
+      try {
+        com.baalkore.app.AudioDecoder.downloadIfMissing(preAlignedTimingsUrl(req.portionId), timingsPath);
+      } catch {
+        // fallback below
+      }
     }
+    timingsMap = readJsonMap(timingsPath);
   }
 
-  const timingsMap = readJsonMap(timingsPath);
-
   const alignOneAliyah = (al: number) => {
-    const url = asaelCommonsUrl(req.portionId, al);
+    const url = studioAudioUrl(req.portionId, al);
     if (!url) throw new Error(`לא נמצאה הקלטת קורא לעלייה ${al} בפרשה זו.`);
-    const ogaPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}.oga`;
-    const ok = com.baalkore.app.AudioDecoder.downloadIfMissing(url, ogaPath);
+    const mp3Path = `${req.cacheDir}/${req.portionId}-aliyah-${al}-studio.mp3`;
+    const ok = com.baalkore.app.AudioDecoder.downloadIfMissing(url, mp3Path);
     if (!ok) throw new Error(`לא ניתן להוריד את הקלטת העלייה (${req.portionId} עלייה ${al}). בדקו חיבור לאינטרנט.`);
 
-    const durationMs = Number(com.baalkore.app.AudioDecoder.getDurationMs(ogaPath)) || 180000;
+    const durationMs = Number(com.baalkore.app.AudioDecoder.getDurationMs(mp3Path)) || 180000;
     const aligned = alignAliyahByDurationMs(durationMs, req.portionVerses, al);
     Object.assign(timingsMap, aligned);
     writeJsonMap(timingsPath, timingsMap);
@@ -240,7 +243,6 @@ function prepareAsaelVerse(req: Extract<WorkerRequest, { type: 'prepare-asael-ve
   if (!timingsMap[req.verseId]) {
     alignOneAliyah(req.aliyah);
   }
-  // Handle Tikkun Aliyah split differences (e.g. if Asael split Aliyah N/N+1 a few verses earlier or later than Sefaria)
   if (!timingsMap[req.verseId] && req.aliyah > 1) {
     alignOneAliyah(req.aliyah - 1);
   }
@@ -254,10 +256,11 @@ function prepareAsaelVerse(req: Extract<WorkerRequest, { type: 'prepare-asael-ve
   }
 
   const targetAliyah = vt.aliyahFile || req.aliyah;
-  const ogaUrl = asaelCommonsUrl(req.portionId, targetAliyah)!;
-  const ogaPath = `${req.cacheDir}/${req.portionId}-aliyah-${targetAliyah}.oga`;
-  com.baalkore.app.AudioDecoder.downloadIfMissing(ogaUrl, ogaPath);
-  com.baalkore.app.AudioDecoder.decodeToWav(ogaPath, req.dstWav, Math.round(vt.startMs), Math.round(vt.endMs));
+  const audioUrl = studioAudioUrl(req.portionId, targetAliyah)!;
+  const mp3Path = `${req.cacheDir}/${req.portionId}-aliyah-${targetAliyah}-studio.mp3`;
+  const ok = com.baalkore.app.AudioDecoder.downloadIfMissing(audioUrl, mp3Path);
+  if (!ok) throw new Error(`לא ניתן להוריד את הקלטת העלייה (${req.portionId} עלייה ${targetAliyah}). בדקו חיבור לאינטרנט.`);
+  com.baalkore.app.AudioDecoder.decodeToWav(mp3Path, req.dstWav, Math.round(vt.startMs), Math.round(vt.endMs));
 
   return {
     startMs: vt.startMs,

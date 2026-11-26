@@ -85,6 +85,7 @@ export class ContentService {
   private readonly portionMetaById = new Map<string, PortionCatalogEntry>(PORTIONS.map((p) => [p.id, p]));
   private readonly verseToPortionId = new Map<string, string>();
   private readonly dynamicRefs = new Map<string, ReferenceVerse>();
+  private readonly loadedTimings = new Map<string, Record<string, { aliyahFile: number; startMs: number; endMs: number; words: [number, number, number][]; quality: 'good' | 'check' }>>();
 
   constructor() {
     for (const p of PORTIONS) {
@@ -184,9 +185,45 @@ export class ContentService {
     const v = this.verse(verseId);
     if (!v) return null;
     const pid = this.verseToPortionId.get(verseId) ?? 'bereshit';
+
+    // Load bundled human-annotated studio word timings from assets/reference-timings/<portionId>.json
+    let portionTimings = this.loadedTimings.get(pid);
+    if (!portionTimings) {
+      const timingsFile = path.join(knownFolders.currentApp().path, 'assets', 'reference-timings', `${pid}.json`);
+      if (File.exists(timingsFile)) {
+        try {
+          const parsed = JSON.parse(File.fromPath(timingsFile).readTextSync());
+          portionTimings = parsed.verses ?? parsed;
+          if (portionTimings) this.loadedTimings.set(pid, portionTimings);
+        } catch {
+          // fallback below
+        }
+      }
+    }
+
+    const vt = portionTimings?.[verseId];
+    if (vt) {
+      const aliyahFile = vt.aliyahFile || v.aliyah;
+      const dyn: ReferenceVerse = {
+        readerId: 'pocket-torah',
+        approval: 'pending',
+        file: `ASAEL:${pid}:${aliyahFile}:${verseId}`,
+        startMs: vt.startMs,
+        endMs: vt.endMs,
+        words: vt.words.map(([s, e, c]) => ({
+          startMs: Math.max(0, s - vt.startMs),
+          endMs: Math.max(40, e - vt.startMs),
+          confidence: c,
+        })),
+        timingQuality: vt.quality ?? 'good',
+      };
+      this.dynamicRefs.set(verseId, dyn);
+      return dyn;
+    }
+
     const sched = computeSyntheticVerseSchedule(v);
     const dyn: ReferenceVerse = {
-      readerId: 'asael-israeli',
+      readerId: 'pocket-torah',
       approval: 'pending',
       file: `ASAEL:${pid}:${v.aliyah}:${verseId}`,
       startMs: sched.startMs,

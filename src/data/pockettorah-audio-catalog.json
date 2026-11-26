@@ -1,0 +1,488 @@
+{
+  "bereshit": {
+    "1": "Bereshit-1.mp3",
+    "2": "Bereshit-2.mp3",
+    "3": "Bereshit-3.mp3",
+    "4": "Bereshit-4.mp3",
+    "5": "Bereshit-5.mp3",
+    "6": "Bereshit-6.mp3",
+    "7": "Bereshit-7.mp3"
+  },
+  "noach": {
+    "1": "Noach-1.mp3",
+    "2": "Noach-2.mp3",
+    "3": "Noach-3.mp3",
+    "4": "Noach-4.mp3",
+    "5": "Noach-5.mp3",
+    "6": "Noach-6.mp3",
+    "7": "Noach-7.mp3"
+  },
+  "lech-lecha": {
+    "1": "Lech-Lecha-1.mp3",
+    "2": "Lech-Lecha-2.mp3",
+    "3": "Lech-Lecha-3.mp3",
+    "4": "Lech-Lecha-4.mp3",
+    "5": "Lech-Lecha-5.mp3",
+    "6": "Lech-Lecha-6.mp3",
+    "7": "Lech-Lecha-7.mp3"
+  },
+  "vayera": {
+    "1": "Vayera-1.mp3",
+    "2": "Vayera-2.mp3",
+    "3": "Vayera-3.mp3",
+    "4": "Vayera-4.mp3",
+    "5": "Vayera-5.mp3",
+    "6": "Vayera-6.mp3",
+    "7": "Vayera-7.mp3"
+  },
+  "chayei-sara": {
+    "1": "ChayeiSara-1.mp3",
+    "2": "ChayeiSara-2.mp3",
+    "3": "ChayeiSara-3.mp3",
+    "4": "ChayeiSara-4.mp3",
+    "5": "ChayeiSara-5.mp3",
+    "6": "ChayeiSara-6.mp3",
+    "7": "ChayeiSara-7.mp3"
+  },
+  "toldot": {
+    "1": "Toldot-1.mp3",
+    "2": "Toldot-2.mp3",
+    "3": "Toldot-3.mp3",
+    "4": "Toldot-4.mp3",
+    "5": "Toldot-5.mp3",
+    "6": "Toldot-6.mp3",
+    "7": "Toldot-7.mp3"
+  },
+  "vayetzei": {
+    "1": "Vayetzei-1.mp3",
+    "2": "Vayetzei-2.mp3",
+    "3": "Vayetzei-3.mp3",
+    "4": "Vayetzei-4.mp3",
+    "5": "Vayetzei-5.mp3",
+    "6": "Vayetzei-6.mp3",
+    "7": "Vayetzei-7.mp3"
+  },
+  "vayishlach": {
+    "1": "Vayishlach-1.mp3",
+    "2": "Vayishlach-2.mp3",
+    "3": "Vayishlach-3.mp3",
+    "4": "Vayishlach-4.mp3",
+    "5": "Vayishlach-5.mp3",
+    "6": "Vayishlach-6.mp3",
+    "7": "Vayishlach-7.mp3"
+  },
+  "vayeshev": {
+    "1": "Vayeshev-1.mp3",
+    "2": "Vayeshev-2.mp3",
+    "3": "Vayeshev-3.mp3",
+    "4": "Vayeshev-4.mp3",
+    "5": "Vayeshev-5.mp3",
+    "6": "Vayeshev-6.mp3",
+    "7": "Vayeshev-7.mp3"
+  },
+  "miketz": {
+    "1": "Miketz-1.mp3",
+    "2": "Miketz-2.mp3",
+    "3": "Miketz-3.mp3",
+    "4": "Miketz-4.mp3",
+    "5": "Miketz-5.mp3",
+    "6": "Miketz-6.mp3",
+    "7": "Miketz-7.mp3"
+  },
+  "vayigash": {
+    "1": "Vayigash-1.mp3",
+    "2": "Vayigash-2.mp3",
+    "3": "Vayigash-3.mp3",
+    "4": "Vayigash-4.mp3",
+    "5": "Vayigash-5.mp3",
+    "6": "Vayigash-6.mp3",
+    "7": "Vayigash-7.mp3"
+  },
+  "vayechi": {
+    "1": "Vayechi-1.mp3",
+    "2": "Vayechi-2.mp3",
+    "3": "Vayechi-3.mp3",
+    "4": "Vayechi-4.mp3",
+    "5": "Vayechi-5.mp3",
+    "6": "Vayechi-6.mp3",
+    "7": "Vayechi-7.mp3"
+  },
+  "shemot": {
+    "1": "Shemot-1.mp3",
+    "2": "Shemot-2.mp3",
+    "3": "Shemot-3.mp3",
+    "4": "Shemot-4.mp3",
+    "5": "Shemot-5.mp3",
+    "6": "Shemot-6.mp3",
+    "7": "Shemot-7.mp3"
+  },
+  "vaera": {
+    "1": "Vaera-1.mp3",
+    "2": "Vaera-2.mp3",
+    "3": "Vaera-3.mp3",
+    "4": "Vaera-4.mp3",
+    "5": "Vaera-5.mp3",
+    "6": "Vaera-6.mp3",
+    "7": "Vaera-7.mp3"
+  },
+  "bo": {
+    "1": "Bo-1.mp3",
+    "2": "Bo-2.mp3",
+    "3": "Bo-3.mp3",
+    "4": "Bo-4.mp3",
+    "5": "Bo-5.mp3",
+    "6": "Bo-6.mp3",
+    "7": "Bo-7.mp3"
+  },
+  "beshalach": {
+    "1": "Beshalach-1.mp3",
+    "2": "Beshalach-2.mp3",
+    "3": "Beshalach-3.mp3",
+    "4": "Beshalach-4.mp3",
+    "5": "Beshalach-5.mp3",
+    "6": "Beshalach-6.mp3",
+    "7": "Beshalach-7.mp3"
+  },
+  "yitro": {
+    "1": "Yitro-1.mp3",
+    "2": "Yitro-2.mp3",
+    "3": "Yitro-3.mp3",
+    "4": "Yitro-4.mp3",
+    "5": "Yitro-5.mp3",
+    "6": "Yitro-6.mp3",
+    "7": "Yitro-7.mp3"
+  },
+  "mishpatim": {
+    "1": "Mishpatim-1.mp3",
+    "2": "Mishpatim-2.mp3",
+    "3": "Mishpatim-3.mp3",
+    "4": "Mishpatim-4.mp3",
+    "5": "Mishpatim-5.mp3",
+    "6": "Mishpatim-6.mp3",
+    "7": "Mishpatim-7.mp3"
+  },
+  "terumah": {
+    "1": "Terumah-1.mp3",
+    "2": "Terumah-2.mp3",
+    "3": "Terumah-3.mp3",
+    "4": "Terumah-4.mp3",
+    "5": "Terumah-5.mp3",
+    "6": "Terumah-6.mp3",
+    "7": "Terumah-7.mp3"
+  },
+  "tetzaveh": {
+    "1": "Tetzaveh-1.mp3",
+    "2": "Tetzaveh-2.mp3",
+    "3": "Tetzaveh-3.mp3",
+    "4": "Tetzaveh-4.mp3",
+    "5": "Tetzaveh-5.mp3",
+    "6": "Tetzaveh-6.mp3",
+    "7": "Tetzaveh-7.mp3"
+  },
+  "ki-tisa": {
+    "1": "KiTisa-1.mp3",
+    "2": "KiTisa-2.mp3",
+    "3": "KiTisa-3.mp3",
+    "4": "KiTisa-4.mp3",
+    "5": "KiTisa-5.mp3",
+    "6": "KiTisa-6.mp3",
+    "7": "KiTisa-7.mp3"
+  },
+  "vayakhel": {
+    "1": "Vayakhel-1.mp3",
+    "2": "Vayakhel-2.mp3",
+    "3": "Vayakhel-3.mp3",
+    "4": "Vayakhel-4.mp3",
+    "5": "Vayakhel-5.mp3",
+    "6": "Vayakhel-6.mp3",
+    "7": "Vayakhel-7.mp3"
+  },
+  "pekudei": {
+    "1": "Pekudei-1.mp3",
+    "2": "Pekudei-2.mp3",
+    "3": "Pekudei-3.mp3",
+    "4": "Pekudei-4.mp3",
+    "5": "Pekudei-5.mp3",
+    "6": "Pekudei-6.mp3",
+    "7": "Pekudei-7.mp3"
+  },
+  "vayikra": {
+    "1": "Vayikra-1.mp3",
+    "2": "Vayikra-2.mp3",
+    "3": "Vayikra-3.mp3",
+    "4": "Vayikra-4.mp3",
+    "5": "Vayikra-5.mp3",
+    "6": "Vayikra-6.mp3",
+    "7": "Vayikra-7.mp3"
+  },
+  "tzav": {
+    "1": "Tzav-1.mp3",
+    "2": "Tzav-2.mp3",
+    "3": "Tzav-3.mp3",
+    "4": "Tzav-4.mp3",
+    "5": "Tzav-5.mp3",
+    "6": "Tzav-6.mp3",
+    "7": "Tzav-7.mp3"
+  },
+  "shmini": {
+    "1": "Shmini-1.mp3",
+    "2": "Shmini-2.mp3",
+    "3": "Shmini-3.mp3",
+    "4": "Shmini-4.mp3",
+    "5": "Shmini-5.mp3",
+    "6": "Shmini-6.mp3",
+    "7": "Shmini-7.mp3"
+  },
+  "tazria": {
+    "1": "Tazria-1.mp3",
+    "2": "Tazria-2.mp3",
+    "3": "Tazria-3.mp3",
+    "4": "Tazria-4.mp3",
+    "5": "Tazria-5.mp3",
+    "6": "Tazria-6.mp3",
+    "7": "Tazria-7.mp3"
+  },
+  "metzora": {
+    "1": "Metzora-1.mp3",
+    "2": "Metzora-2.mp3",
+    "3": "Metzora-3.mp3",
+    "4": "Metzora-4.mp3",
+    "5": "Metzora-5.mp3",
+    "6": "Metzora-6.mp3",
+    "7": "Metzora-7.mp3"
+  },
+  "achrei-mot": {
+    "1": "AchreiMot-1.mp3",
+    "2": "AchreiMot-2.mp3",
+    "3": "AchreiMot-3.mp3",
+    "4": "AchreiMot-4.mp3",
+    "5": "AchreiMot-5.mp3",
+    "6": "AchreiMot-6.mp3",
+    "7": "AchreiMot-7.mp3"
+  },
+  "kedoshim": {
+    "1": "Kedoshim-1.mp3",
+    "2": "Kedoshim-2.mp3",
+    "3": "Kedoshim-3.mp3",
+    "4": "Kedoshim-4.mp3",
+    "5": "Kedoshim-5.mp3",
+    "6": "Kedoshim-6.mp3",
+    "7": "Kedoshim-7.mp3"
+  },
+  "emor": {
+    "1": "Emor-1.mp3",
+    "2": "Emor-2.mp3",
+    "3": "Emor-3.mp3",
+    "4": "Emor-4.mp3",
+    "5": "Emor-5.mp3",
+    "6": "Emor-6.mp3",
+    "7": "Emor-7.mp3"
+  },
+  "behar": {
+    "1": "Behar-1.mp3",
+    "2": "Behar-2.mp3",
+    "3": "Behar-3.mp3",
+    "4": "Behar-4.mp3",
+    "5": "Behar-5.mp3",
+    "6": "Behar-6.mp3",
+    "7": "Behar-7.mp3"
+  },
+  "bechukotai": {
+    "1": "Bechukotai-1.mp3",
+    "2": "Bechukotai-2.mp3",
+    "3": "Bechukotai-3.mp3",
+    "4": "Bechukotai-4.mp3",
+    "5": "Bechukotai-5.mp3",
+    "6": "Bechukotai-6.mp3",
+    "7": "Bechukotai-7.mp3"
+  },
+  "bamidbar": {
+    "1": "Bamidbar-1.mp3",
+    "2": "Bamidbar-2.mp3",
+    "3": "Bamidbar-3.mp3",
+    "4": "Bamidbar-4.mp3",
+    "5": "Bamidbar-5.mp3",
+    "6": "Bamidbar-6.mp3",
+    "7": "Bamidbar-7.mp3"
+  },
+  "nasso": {
+    "1": "Nasso-1.mp3",
+    "2": "Nasso-2.mp3",
+    "3": "Nasso-3.mp3",
+    "4": "Nasso-4.mp3",
+    "5": "Nasso-5.mp3",
+    "6": "Nasso-6.mp3",
+    "7": "Nasso-7.mp3"
+  },
+  "behaalotcha": {
+    "1": "Behaalotcha-1.mp3",
+    "2": "Behaalotcha-2.mp3",
+    "3": "Behaalotcha-3.mp3",
+    "4": "Behaalotcha-4.mp3",
+    "5": "Behaalotcha-5.mp3",
+    "6": "Behaalotcha-6.mp3",
+    "7": "Behaalotcha-7.mp3"
+  },
+  "shlach": {
+    "1": "Shlach-1.mp3",
+    "2": "Shlach-2.mp3",
+    "3": "Shlach-3.mp3",
+    "4": "Shlach-4.mp3",
+    "5": "Shlach-5.mp3",
+    "6": "Shlach-6.mp3",
+    "7": "Shlach-7.mp3"
+  },
+  "korach": {
+    "1": "Korach-1.mp3",
+    "2": "Korach-2.mp3",
+    "3": "Korach-3.mp3",
+    "4": "Korach-4.mp3",
+    "5": "Korach-5.mp3",
+    "6": "Korach-6.mp3",
+    "7": "Korach-7.mp3"
+  },
+  "chukat": {
+    "1": "Chukat-1.mp3",
+    "2": "Chukat-2.mp3",
+    "3": "Chukat-3.mp3",
+    "4": "Chukat-4.mp3",
+    "5": "Chukat-5.mp3",
+    "6": "Chukat-6.mp3",
+    "7": "Chukat-7.mp3"
+  },
+  "balak": {
+    "1": "Balak-1.mp3",
+    "2": "Balak-2.mp3",
+    "3": "Balak-3.mp3",
+    "4": "Balak-4.mp3",
+    "5": "Balak-5.mp3",
+    "6": "Balak-6.mp3",
+    "7": "Balak-7.mp3"
+  },
+  "pinchas": {
+    "1": "Pinchas-1.mp3",
+    "2": "Pinchas-2.mp3",
+    "3": "Pinchas-3.mp3",
+    "4": "Pinchas-4.mp3",
+    "5": "Pinchas-5.mp3",
+    "6": "Pinchas-6.mp3",
+    "7": "Pinchas-7.mp3"
+  },
+  "matot": {
+    "1": "Matot-1.mp3",
+    "2": "Matot-2.mp3",
+    "3": "Matot-3.mp3",
+    "4": "Matot-4.mp3",
+    "5": "Matot-5.mp3",
+    "6": "Matot-6.mp3",
+    "7": "Matot-7.mp3"
+  },
+  "masei": {
+    "1": "Masei-1.mp3",
+    "2": "Masei-2.mp3",
+    "3": "Masei-3.mp3",
+    "4": "Masei-4.mp3",
+    "5": "Masei-5.mp3",
+    "6": "Masei-6.mp3",
+    "7": "Masei-7.mp3"
+  },
+  "devarim": {
+    "1": "Devarim-1.mp3",
+    "2": "Devarim-2.mp3",
+    "3": "Devarim-3.mp3",
+    "4": "Devarim-4.mp3",
+    "5": "Devarim-5.mp3",
+    "6": "Devarim-6.mp3",
+    "7": "Devarim-7.mp3"
+  },
+  "vaetchanan": {
+    "1": "Vaethanan-1.mp3",
+    "2": "Vaethanan-2.mp3",
+    "3": "Vaethanan-3.mp3",
+    "4": "Vaethanan-4.mp3",
+    "5": "Vaethanan-5.mp3",
+    "6": "Vaethanan-6.mp3",
+    "7": "Vaethanan-7.mp3"
+  },
+  "eikev": {
+    "1": "Eikev-1.mp3",
+    "2": "Eikev-2.mp3",
+    "3": "Eikev-3.mp3",
+    "4": "Eikev-4.mp3",
+    "5": "Eikev-5.mp3",
+    "6": "Eikev-6.mp3",
+    "7": "Eikev-7.mp3"
+  },
+  "reeh": {
+    "1": "Reeh-1.mp3",
+    "2": "Reeh-2.mp3",
+    "3": "Reeh-3.mp3",
+    "4": "Reeh-4.mp3",
+    "5": "Reeh-5.mp3",
+    "6": "Reeh-6.mp3",
+    "7": "Reeh-7.mp3"
+  },
+  "shoftim": {
+    "1": "Shoftim-1.mp3",
+    "2": "Shoftim-2.mp3",
+    "3": "Shoftim-3.mp3",
+    "4": "Shoftim-4.mp3",
+    "5": "Shoftim-5.mp3",
+    "6": "Shoftim-6.mp3",
+    "7": "Shoftim-7.mp3"
+  },
+  "ki-teitzei": {
+    "1": "KiTeitzei-1.mp3",
+    "2": "KiTeitzei-2.mp3",
+    "3": "KiTeitzei-3.mp3",
+    "4": "KiTeitzei-4.mp3",
+    "5": "KiTeitzei-5.mp3",
+    "6": "KiTeitzei-6.mp3",
+    "7": "KiTeitzei-7.mp3"
+  },
+  "ki-tavo": {
+    "1": "KiTavo-1.mp3",
+    "2": "KiTavo-2.mp3",
+    "3": "KiTavo-3.mp3",
+    "4": "KiTavo-4.mp3",
+    "5": "KiTavo-5.mp3",
+    "6": "KiTavo-6.mp3",
+    "7": "KiTavo-7.mp3"
+  },
+  "nitzavim": {
+    "1": "Nitzavim-1.mp3",
+    "2": "Nitzavim-2.mp3",
+    "3": "Nitzavim-3.mp3",
+    "4": "Nitzavim-4.mp3",
+    "5": "Nitzavim-5.mp3",
+    "6": "Nitzavim-6.mp3",
+    "7": "Nitzavim-7.mp3"
+  },
+  "vayeilech": {
+    "1": "Vayeilech-1.mp3",
+    "2": "Vayeilech-2.mp3",
+    "3": "Vayeilech-3.mp3",
+    "4": "Vayeilech-4.mp3",
+    "5": "Vayeilech-5.mp3",
+    "6": "Vayeilech-6.mp3",
+    "7": "Vayeilech-7.mp3"
+  },
+  "haazinu": {
+    "1": "Haazinu-1.mp3",
+    "2": "Haazinu-2.mp3",
+    "3": "Haazinu-3.mp3",
+    "4": "Haazinu-4.mp3",
+    "5": "Haazinu-5.mp3",
+    "6": "Haazinu-6.mp3",
+    "7": "Haazinu-7.mp3"
+  },
+  "vzot-haberachah": {
+    "1": "VezotHaberakhah-1.mp3",
+    "2": "VezotHaberakhah-2.mp3",
+    "3": "VezotHaberakhah-3.mp3",
+    "4": "VezotHaberakhah-4.mp3",
+    "5": "VezotHaberakhah-5.mp3",
+    "6": "VezotHaberakhah-6.mp3",
+    "7": "VezotHaberakhah-7.mp3"
+  }
+}

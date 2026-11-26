@@ -84,6 +84,22 @@ export function asaelCommonsUrl(portionId: string, aliyah: number): string | nul
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
 }
 
+import pocketCatalogJson from '../../data/pockettorah-audio-catalog.json';
+
+const POCKET_CATALOG = pocketCatalogJson as Record<string, Record<string, string>>;
+
+/** Returns the exact studio MP3 filename from the PocketTorah/Sefaria corpus for `(portionId, aliyah)` (1..7). */
+export function studioAudioFileName(portionId: string, aliyah: number): string | null {
+  return POCKET_CATALOG[portionId]?.[String(aliyah)] ?? null;
+}
+
+/** Returns the direct GitHub CDN URL for the studio MP3 recording of `(portionId, aliyah)` (1..7). */
+export function studioAudioUrl(portionId: string, aliyah: number): string | null {
+  const fn = studioAudioFileName(portionId, aliyah);
+  if (!fn) return null;
+  return `https://raw.githubusercontent.com/rneiss/PocketTorah/master/data/audio/${encodeURIComponent(fn)}`;
+}
+
 /** Optional GitHub-hosted pre-aligned timings URL for a Parasha (`reference-timings/<portionId>.json`). */
 export function preAlignedTimingsUrl(portionId: string): string {
   return `https://raw.githubusercontent.com/odedBartov/baal-kore/main/reference-timings/${portionId}.json`;

@@ -66,12 +66,13 @@ export class AudioService {
     if (existingJob) return existingJob;
 
     const job = (async () => {
-      const dst = path.join(this.folder(knownFolders.temp(), 'reference-v5', ref.readerId), `${verseId}.wav`);
+      const dst = path.join(this.folder(knownFolders.temp(), 'reference-v6', ref.readerId), `${verseId}.wav`);
       if (ref.file.startsWith('ASAEL:')) {
         const [, portionId, aliyahStr] = ref.file.split(':');
         const aliyah = Number(aliyahStr) || 1;
         const portion = this.content.getPortion(portionId);
-        const cacheDir = this.folder(knownFolders.documents(), 'asael-reference-cache');
+        const cacheDir = this.folder(knownFolders.documents(), 'studio-reference-cache');
+        const appDir = knownFolders.currentApp().path;
         const res = await this.run<PreparedVerseResult>({
           type: 'prepare-asael-verse',
           portionId,
@@ -79,6 +80,7 @@ export class AudioService {
           verseId,
           dstWav: dst,
           cacheDir,
+          appDir,
           portionVerses: portion.verses.map((v) => ({
             id: v.id,
             aliyah: v.aliyah,

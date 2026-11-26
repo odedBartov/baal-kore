@@ -87,6 +87,27 @@ public final class AudioDecoder {
         }
     }
 
+    public static String readTextFile(String path) {
+        File f = new File(path);
+        if (!f.exists() || f.length() == 0) return "";
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            byte[] b = new byte[(int) f.length()];
+            raf.readFully(b);
+            return new String(b, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    public static void writeTextFile(String path, String content) throws IOException {
+        File f = new File(path);
+        File parent = f.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        try (FileOutputStream out = new FileOutputStream(f)) {
+            out.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
     public static int decodeToWav(String src, String dst, long startMs, long endMs) throws IOException {
         if (startMs <= 0 && endMs <= 0) {
             return decodeFullToWav(src, dst);

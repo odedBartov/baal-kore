@@ -27,6 +27,8 @@ declare const com: {
       AudioDecoder: {
         decodeToWav(src: string, dst: string, startMs: number, endMs: number): number;
         downloadIfMissing(url: string, dst: string): boolean;
+        readTextFile(path: string): string;
+        writeTextFile(path: string, content: string): void;
       };
       PhoneModel: new (modelPath: string, threads: number) => { logProbsToFile(featPath: string, n: number, out: string): number };
       CtcModel: {
@@ -185,10 +187,8 @@ function contour(wav: string): ContourResult {
 
 function readJsonMap(filePath: string): Record<string, AlignedVerseTiming> {
   try {
-    const f = new java.io.File(filePath);
-    if (!f.exists() || f.length() < 2) return {};
-    const bytes = java.nio.file.Files.readAllBytes(f.toPath());
-    const str = String(new java.lang.String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+    const str = com.baalkore.app.AudioDecoder.readTextFile(filePath);
+    if (!str || str.length < 2) return {};
     const parsed = JSON.parse(str);
     if (parsed && typeof parsed === 'object') {
       return (parsed.verses && typeof parsed.verses === 'object' ? parsed.verses : parsed) as Record<string, AlignedVerseTiming>;
@@ -200,11 +200,7 @@ function readJsonMap(filePath: string): Record<string, AlignedVerseTiming> {
 }
 
 function writeJsonMap(filePath: string, data: Record<string, AlignedVerseTiming>): void {
-  const f = new java.io.File(filePath);
-  const parent = f.getParentFile();
-  if (parent && !parent.exists()) parent.mkdirs();
-  const jStr = new java.lang.String(JSON.stringify(data));
-  java.nio.file.Files.write(f.toPath(), jStr.getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+  com.baalkore.app.AudioDecoder.writeTextFile(filePath, JSON.stringify(data));
 }
 
 /**

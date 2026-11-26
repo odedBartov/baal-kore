@@ -58,7 +58,7 @@ async function alignPortion(portionId: string, model: Awaited<ReturnType<typeof 
   const alignableVerses: AlignableVerse[] = portion.verses.map((v) => ({
     id: v.id,
     aliyah: v.aliyah,
-    words: v.words.map((w) => ({ spoken: w.spoken, syllables: Math.max(1, w.syllables.length) })),
+    words: v.words.map((w) => ({ spoken: w.spoken, syllables: Math.max(1, typeof w.syllables === 'number' ? w.syllables : 2) })),
   }));
 
   const versesMap: Record<string, AlignedVerseTiming> = {};

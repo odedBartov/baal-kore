@@ -66,7 +66,7 @@ export class AudioService {
     if (existingJob) return existingJob;
 
     const job = (async () => {
-      const dst = path.join(this.folder(knownFolders.temp(), 'reference-v4', ref.readerId), `${verseId}.wav`);
+      const dst = path.join(this.folder(knownFolders.temp(), 'reference-v5', ref.readerId), `${verseId}.wav`);
       if (ref.file.startsWith('ASAEL:')) {
         const [, portionId, aliyahStr] = ref.file.split(':');
         const aliyah = Number(aliyahStr) || 1;

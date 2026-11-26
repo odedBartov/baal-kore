@@ -178,9 +178,12 @@ public final class AudioDecoder {
             codec.configure(fmt, null, null, 0);
             codec.start();
 
-            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dstFile), 1 << 16);
-            out.write(new byte[44]);
-            long writtenFrames = 0;
+            int estSamples = (endMs > startMs && endMs < Long.MAX_VALUE)
+                    ? (int) Math.min(rate * 180L, ((endMs - startMs) * rate) / 1000L + rate * 2L)
+                    : rate * 30;
+            float[] rawSamples = new float[Math.max(4096, estSamples)];
+            int sampleCount = 0;
+
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             boolean inDone = false, outDone = false;
             while (!outDone) {
@@ -227,7 +230,12 @@ public final class AudioDecoder {
                         int f1 = (int) Math.min((long) n, endFrame - bufStartFrame);
                         int count = Math.max(0, f1 - f0);
                         if (count > 0) {
-                            byte[] pcm = new byte[count * 2];
+                            if (sampleCount + count > rawSamples.length) {
+                                int newCap = Math.max(rawSamples.length * 2, sampleCount + count + rate);
+                                float[] grown = new float[newCap];
+                                System.arraycopy(rawSamples, 0, grown, 0, sampleCount);
+                                rawSamples = grown;
+                            }
                             for (int i = 0; i < count; i++) {
                                 int f = f0 + i;
                                 float s = 0;
@@ -235,12 +243,8 @@ public final class AudioDecoder {
                                     int p = (f * channels + c) * bytesPerSample;
                                     s += floatPcm ? ob.getFloat(p) : ob.getShort(p) / 32768f;
                                 }
-                                int v = Math.max(-32768, Math.min(32767, Math.round(s / channels * 32767f)));
-                                pcm[2 * i] = (byte) v;
-                                pcm[2 * i + 1] = (byte) (v >> 8);
+                                rawSamples[sampleCount++] = s / channels;
                             }
-                            out.write(pcm, 0, count * 2);
-                            writtenFrames += count;
                         }
                     }
 
@@ -250,8 +254,25 @@ public final class AudioDecoder {
                     }
                 }
             }
-            out.close();
-            writeHeader(dstFile.getAbsolutePath(), rate, writtenFrames);
+
+            masterVocalTrack(rawSamples, sampleCount, rate);
+
+            try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dstFile), 1 << 16)) {
+                out.write(new byte[44]);
+                byte[] pcm = new byte[Math.min(sampleCount, 16384) * 2];
+                int pos = 0;
+                while (pos < sampleCount) {
+                    int chunk = Math.min(16384, sampleCount - pos);
+                    for (int i = 0; i < chunk; i++) {
+                        int v = Math.max(-32768, Math.min(32767, Math.round(rawSamples[pos + i] * 32767f)));
+                        pcm[2 * i] = (byte) v;
+                        pcm[2 * i + 1] = (byte) (v >> 8);
+                    }
+                    out.write(pcm, 0, chunk * 2);
+                    pos += chunk;
+                }
+            }
+            writeHeader(dstFile.getAbsolutePath(), rate, sampleCount);
             return rate;
         } finally {
             if (codec != null) {
@@ -262,6 +283,95 @@ public final class AudioDecoder {
                 codec.release();
             }
             ex.release();
+        }
+    }
+
+    /**
+     * Broadcast-grade vocal restoration & mastering chain for Torah cantillation recordings:
+     * 1. 105 Hz High-Pass Filter (removes low-frequency rumble & DC offset).
+     * 2. If the recording has the 2009 Audacity FFT spectral-ringing & +20 dB 350-750 Hz boxiness hump (hot RMS > -14 dB),
+     *    applies a 480 Hz Peaking Cut (-6.5 dB, Q=0.85) + 2300 Hz Presence Boost (+3.0 dB, Q=0.8) + smooth inter-word
+     *    downward noise-gate expander to silence the -15..-20 dB electronic "musical noise" warble during pauses.
+     * 3. Normalizes RMS loudness to match Bereshit (-16.8 dB RMS) with a smooth tanh soft-knee limiter at 0.75.
+     */
+    private static void masterVocalTrack(float[] x, int n, int rate) {
+        if (n < 256 || rate <= 0) return;
+
+        // Measure initial RMS to detect hot/over-processed 2009 recordings (like Lech-Lecha at -11.4 dB RMS)
+        double sumSq0 = 0;
+        for (int i = 0; i < n; i++) sumSq0 += (double) x[i] * x[i];
+        double rms0 = Math.sqrt(sumSq0 / n);
+        double rmsDb0 = 20.0 * Math.log10(Math.max(1e-7, rms0));
+
+        // 1. 1st-order High-Pass Filter at 105 Hz
+        float hpR = (float) Math.exp((-2.0 * Math.PI * 105.0) / rate);
+        float prevX = 0f, prevY = 0f;
+        for (int i = 0; i < n; i++) {
+            float s = x[i];
+            prevY = s - prevX + hpR * prevY;
+            prevX = s;
+            x[i] = prevY;
+        }
+
+        // 2. De-boxiness & De-ringing EQ + Smooth Inter-Word Downward Expander on hot/noisy recordings
+        if (rmsDb0 > -14.8) {
+            applyPeakingBiquad(x, n, rate, 480.0, -6.5, 0.85);
+            applyPeakingBiquad(x, n, rate, 2300.0, 3.0, 0.80);
+
+            // Compute 12 ms short-term envelope and apply smooth downward expansion below the vocal gate threshold
+            int win = Math.max(64, (int) Math.round(rate * 0.012));
+            double gateThresh = rms0 * 0.34; // ~ -9.5 dB below mean RMS (catches the -15..-20 dB inter-word FFT ringing)
+            float envGain = 1.0f;
+            float attack = (float) Math.exp(-1.0 / (rate * 0.004));
+            float release = (float) Math.exp(-1.0 / (rate * 0.025));
+
+            double runSq = 0;
+            for (int i = 0; i < Math.min(n, win); i++) runSq += (double) x[i] * x[i];
+            for (int i = 0; i < n; i++) {
+                if (i + win < n) runSq += (double) x[i + win] * x[i + win];
+                if (i >= win) runSq -= (double) x[i - win] * x[i - win];
+                double localRms = Math.sqrt(Math.max(0.0, runSq) / (2 * win));
+                float targetG = localRms >= gateThresh
+                        ? 1.0f
+                        : (float) Math.max(0.18, Math.pow(localRms / Math.max(1e-6, gateThresh), 1.6));
+                envGain = targetG > envGain
+                        ? attack * envGain + (1.0f - attack) * targetG
+                        : release * envGain + (1.0f - release) * targetG;
+                x[i] *= envGain;
+            }
+        }
+
+        // 3. RMS Normalization to -16.8 dB (matching Bereshit) + soft-knee tanh limiter at 0.75
+        double sumSq1 = 0;
+        for (int i = 0; i < n; i++) sumSq1 += (double) x[i] * x[i];
+        double rms1 = Math.sqrt(sumSq1 / n);
+        double targetRms = Math.pow(10.0, -16.8 / 20.0);
+        float gain = (float) Math.min(1.8, targetRms / Math.max(1e-5, rms1));
+        for (int i = 0; i < n; i++) {
+            double v = x[i] * gain;
+            x[i] = (float) (Math.tanh(v / 0.75) * 0.75);
+        }
+    }
+
+    private static void applyPeakingBiquad(float[] x, int n, int rate, double f0, double dBgain, double Q) {
+        double A = Math.pow(10.0, dBgain / 40.0);
+        double w0 = (2.0 * Math.PI * f0) / rate;
+        double alpha = Math.sin(w0) / (2.0 * Q);
+        double a0 = 1.0 + alpha / A;
+        float b0 = (float) ((1.0 + alpha * A) / a0);
+        float b1 = (float) ((-2.0 * Math.cos(w0)) / a0);
+        float b2 = (float) ((1.0 - alpha * A) / a0);
+        float a1 = (float) ((-2.0 * Math.cos(w0)) / a0);
+        float a2 = (float) ((1.0 - alpha / A) / a0);
+        float x1 = 0f, x2 = 0f, y1 = 0f, y2 = 0f;
+        for (int i = 0; i < n; i++) {
+            float s = x[i];
+            float out = b0 * s + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+            x2 = x1;
+            x1 = s;
+            y2 = y1;
+            y1 = out;
+            x[i] = out;
         }
     }
 

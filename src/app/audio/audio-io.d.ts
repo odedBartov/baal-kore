@@ -18,7 +18,8 @@ export class Recorder {
 }
 
 export class Player {
-  play(path: string, onEnd?: () => void, startMs?: number): void;
+  play(path: string, onEnd?: () => void, startMs?: number, speed?: number): void;
+  setSpeed?(speed: number): void;
   stop(): void;
   readonly isPlaying: boolean;
   readonly positionMs: number;

@@ -17,14 +17,22 @@ android {
     targetSdkVersion 36
 
     // Version Information
-    versionCode 8
-    versionName "1.0.2"
+    versionCode 9
+    versionName "1.0.3"
 
     generatedDensities = []
 
     // ponytail: 64-bit ARM phones + x86_64 emulator only; add 'armeabi-v7a' if old 32-bit phones matter.
     // abiFilters is additive and NativeScript pre-fills all four ABIs, so replace the set.
     ndk { abiFilters.clear(); abiFilters 'arm64-v8a', 'x86_64' }
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled true
+      shrinkResources false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), file("$rootDir/../../App_Resources/Android/proguard-rules.pro")
+    }
   }
 
   aaptOptions {

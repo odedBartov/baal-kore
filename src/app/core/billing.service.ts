@@ -3,7 +3,11 @@ import { Application, Dialogs, Utils, isAndroid } from '@nativescript/core';
 import { PORTIONS } from './content.service';
 import { fetchOnlineCouponsManifest } from './coupons';
 import {
+  ALL_TORAH_PRICE_LABEL_HE,
+  CHUMASH_PRICE_LABEL_HE,
   PARASHA_PRICE_LABEL_HE,
+  PLAY_SKU_ALL_TORAH,
+  PLAY_SKU_CHUMASH,
   PLAY_SKU_FULL,
   playProductIdForPortion,
   portionIdFromPlayProductId,
@@ -73,7 +77,7 @@ export class BillingService {
       setTimeout(() => this.syncOwnedFromBridge(), 1500);
       setTimeout(() => {
         this.syncOwnedFromBridge();
-        this.bridge?.queryProductsCsv(PLAY_SKU_FULL);
+        this.bridge?.queryProductsCsv(`${PLAY_SKU_FULL},${PLAY_SKU_CHUMASH},${PLAY_SKU_ALL_TORAH}`);
       }, 3500);
     } catch (e) {
       console.warn('BillingService init failed:', e);
@@ -100,6 +104,9 @@ export class BillingService {
     const csv = this.bridge.getOwnedProductsCsv();
     if (!csv) return 0;
     const productIds = csv.split(',').map((s) => s.trim()).filter(Boolean);
+    if (productIds.includes(PLAY_SKU_ALL_TORAH)) {
+      return this.store.syncPurchasedPortions(this.allPortionIds);
+    }
     const portionIds = productIds
       .map((pid) => portionIdFromPlayProductId(pid, this.allPortionIds))
       .filter((id): id is string => id !== null);
@@ -178,37 +185,79 @@ export class BillingService {
   }
 
   /**
-   * Opens the Parasha Paywall dialog (10 ₪ regular, or 5 ₪ with an active 50% coupon) with an option
-   * to enter a coupon code right from the dialog. Returns true if the Parasha is now unlocked.
+   * Opens the Parasha Paywall dialog with single-Parasha (10 ₪), Full-Chumash (39 ₪),
+   * All-54-Parashot (119 ₪), and online Coupon options. Returns true if the Parasha is now unlocked.
    */
   async promptUnlockParasha(portion: { id: string; nameHe: string; bookNameHe?: string }): Promise<boolean> {
     if (this.store.isPortionPurchased(portion.id)) return true;
 
-    const discounted = this.store.hasDiscount50();
+    const meta = PORTIONS.find((p) => p.id === portion.id);
+    const bookNameHe = portion.bookNameHe ?? meta?.bookNameHe ?? 'בראשית';
+    const chumashPortionIds = meta ? PORTIONS.filter((p) => p.book === meta.book).map((p) => p.id) : [portion.id];
+
     const priceLabel = this.store.currentPriceLabel();
-    const sku = this.productIdFor(portion.id);
-    const buyAction = discounted ? `💳 רכישה ב־${priceLabel} (50% הנחת קופון!)` : `💳 רכישה ב־${priceLabel} (Google Play)`;
+    const buySingleAction = `💳 פתיחת פרשת ${portion.nameHe} בלבד – ${priceLabel}`;
+    const buyChumashAction = `📚 כל חומש ${bookNameHe} (${chumashPortionIds.length} פרשות) – ${CHUMASH_PRICE_LABEL_HE}`;
+    const buyAllAction = `👑 כל התורה כולה (54 פרשות) – ${ALL_TORAH_PRICE_LABEL_HE}`;
     const couponAction = '🎟️ יש לי קוד קופון / הנחה';
 
     const choice = await Dialogs.action({
-      title: `🔓 פתיחת פרשת ${portion.nameHe} – ${priceLabel}`,
+      title: `🔓 פתיחת פרשת ${portion.nameHe}`,
       message:
         `עליית ראשון (כהן) פתוחה בחינם בכל 54 הפרשות!\n` +
-        `פתיחת כל שאר העליות (שני עד שביעי) בפרשת ${portion.nameHe}:\n` +
-        `• תשלום חד־פעמי: ${priceLabel}${discounted ? ' (במקום 10 ₪!)' : ''}\n` +
-        `• פותח מיד את כל הפסוקים בעליות ב׳–ז׳\n` +
-        `• רכישה מאובטחת ב־Google Play (${sku})`,
+        `בחרו את מסלול הפתיחה לעליות ב׳–ז׳:\n` +
+        `• פרשת ${portion.nameHe} בלבד: ${priceLabel} (חד־פעמי)\n` +
+        `• כל חומש ${bookNameHe} (${chumashPortionIds.length} פרשות): ${CHUMASH_PRICE_LABEL_HE}\n` +
+        `• כל 54 פרשות התורה: ${ALL_TORAH_PRICE_LABEL_HE}`,
       cancelButtonText: 'ביטול',
-      actions: [buyAction, couponAction],
+      actions: [buySingleAction, buyChumashAction, buyAllAction, couponAction],
     });
 
     if (choice === couponAction) {
       return await this.promptRedeemCoupon(portion);
     }
 
-    if (choice !== buyAction) return false;
+    if (choice === buyChumashAction) {
+      const outcome = await this.launchGooglePlayPurchase(
+        portion.id,
+        `כל חומש ${bookNameHe}`,
+        PLAY_SKU_CHUMASH,
+        CHUMASH_PRICE_LABEL_HE,
+        chumashPortionIds,
+      );
+      if (outcome.purchased) {
+        await Dialogs.alert({
+          title: `🎉 כל חומש ${bookNameHe} נפתח!`,
+          message: `כל ${chumashPortionIds.length} הפרשות בחומש ${bookNameHe} (עליות א׳–ז׳) פתוחות כעת לתרגול מלא!`,
+          okButtonText: 'מעולה!',
+        });
+        return true;
+      }
+      return false;
+    }
 
-    const outcome = await this.launchGooglePlayPurchase(portion.id, portion.nameHe);
+    if (choice === buyAllAction) {
+      const outcome = await this.launchGooglePlayPurchase(
+        portion.id,
+        'כל 54 פרשות התורה',
+        PLAY_SKU_ALL_TORAH,
+        ALL_TORAH_PRICE_LABEL_HE,
+        this.allPortionIds,
+      );
+      if (outcome.purchased) {
+        await Dialogs.alert({
+          title: '👑 כל 54 פרשות התורה נפתחו!',
+          message: 'כל חמשת חומשי התורה (54 פרשות, 378 עליות) פתוחים כעת במלואם לתרגול ללא הגבלה!',
+          okButtonText: 'מעולה!',
+        });
+        return true;
+      }
+      return false;
+    }
+
+    if (choice !== buySingleAction) return false;
+
+    const outcome = await this.launchGooglePlayPurchase(portion.id, portion.nameHe, PLAY_SKU_FULL, priceLabel, [portion.id]);
     if (outcome.purchased) {
       await Dialogs.alert({
         title: `🎉 פרשת ${portion.nameHe} נפתחה!`,
@@ -221,9 +270,17 @@ export class BillingService {
   }
 
   /** Launches the native Google Play Billing flow and polls the Java bridge until completion. */
-  async launchGooglePlayPurchase(portionId: string, portionNameHe: string): Promise<PurchaseOutcome> {
+  async launchGooglePlayPurchase(
+    portionId: string,
+    labelHe: string,
+    customProductId?: string,
+    customPriceLabelHe?: string,
+    unlockPortionIds?: string[],
+  ): Promise<PurchaseOutcome> {
     this.initBridge();
-    const productId = this.productIdFor(portionId);
+    const productId = customProductId ?? this.productIdFor(portionId);
+    const priceLabel = customPriceLabelHe ?? this.store.currentPriceLabel();
+    const targetIds = unlockPortionIds ?? [portionId];
     const activity = Application.android?.foregroundActivity || Application.android?.startActivity;
 
     if (!this.bridge || !activity) {
@@ -242,7 +299,7 @@ export class BillingService {
         const st = this.bridge.getPurchaseState();
 
         if (st.startsWith('PURCHASED:') || st === 'ALREADY_OWNED') {
-          this.store.markPortionPurchased(portionId);
+          this.store.markPortionsPurchased(targetIds);
           this.syncOwnedFromBridge();
           this.bridge.resetPurchaseState();
           return { purchased: true };
@@ -265,7 +322,7 @@ export class BillingService {
 
         if (st.startsWith('PRODUCT_NOT_IN_PLAY_CONSOLE:') || st.startsWith('BILLING_UNAVAILABLE:') || st.startsWith('ERROR:')) {
           this.bridge.resetPurchaseState();
-          return await this.handlePlayConsoleSetupOrDevUnlock(portionId, portionNameHe, productId, st);
+          return await this.handlePlayConsoleSetupOrDevUnlock(labelHe, productId, priceLabel, targetIds, st);
         }
       }
       return { purchased: false, messageHe: 'זמן ההמתנה ל־Google Play הסתיים.' };
@@ -279,9 +336,10 @@ export class BillingService {
    * In debug builds only (android:debuggable="true"): displays the SKU details and offers a developer test unlock.
    */
   private async handlePlayConsoleSetupOrDevUnlock(
-    portionId: string,
-    portionNameHe: string,
+    labelHe: string,
     productId: string,
+    priceLabel: string,
+    targetIds: string[],
     rawState: string,
   ): Promise<PurchaseOutcome> {
     const isDebug = Boolean(this.bridge?.isDebugBuild());
@@ -294,22 +352,21 @@ export class BillingService {
       return { purchased: false };
     }
 
-    const priceLabel = this.store.currentPriceLabel();
     const devUnlock = await Dialogs.confirm({
       title: `חיבור Google Play Billing (${priceLabel})`,
       message:
-        `שירות Google Play Billing הופעל עבור פרשת ${portionNameHe}.\n` +
+        `שירות Google Play Billing הופעל עבור: ${labelHe}.\n` +
         `מזהה מוצר (Product ID): ${productId}\n` +
         `מחיר: ${priceLabel}\n` +
         `סטטוס מ־Google Play: ${rawState}\n\n` +
         `המוצר טרם פורסם ב־Google Play Console או שה־APK מותקן בבדיקה מקומית (Build: DEBUG).\n` +
-        `האם לפתוח את פרשת ${portionNameHe} כעת במצב בדיקת מפתח?`,
+        `האם לפתוח את ${labelHe} כעת במצב בדיקת מפתח?`,
       okButtonText: '🧪 פתיחה (מצב בדיקה)',
       cancelButtonText: 'סגירה',
     });
 
     if (devUnlock) {
-      this.store.markPortionPurchased(portionId);
+      this.store.markPortionsPurchased(targetIds);
       return { purchased: true };
     }
     return { purchased: false };

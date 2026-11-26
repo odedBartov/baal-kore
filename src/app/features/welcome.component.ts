@@ -4,6 +4,7 @@ import { ContentService } from '../core/content.service';
 import {
   computeCatalogPortionSummary,
   computeChallengeStatus,
+  getWeeklyParashaId,
   type DailyQuest,
 } from '../core/gamification';
 import { requestNotificationPermission } from '../core/notifications';
@@ -54,10 +55,23 @@ import { RabbiComponent } from '../ui/rabbi.component';
           <Button class="btn btn-primary btn-cta" textWrap="true" [text]="'▶ להמשיך בקריאה: ' + where()" (tap)="continue()"></Button>
           <GridLayout columns="*, *" class="buttons">
             <Button col="1" class="btn" textWrap="true" text="📖 5 חומשים ופרשות" (tap)="nav.navigate(['/portions'])"></Button>
-            <Button col="0" class="btn" textWrap="true" text="🎯 אתגרים וחנות" (tap)="nav.navigate(['/challenges'])"></Button>
+            <Button col="0" class="btn" textWrap="true" text="🎵 מילון טעמי המקרא" (tap)="nav.navigate(['/taamim'])"></Button>
           </GridLayout>
+          <Button class="btn" textWrap="true" text="🎯 מתכנן בר־מצווה, אתגרים וחנות" (tap)="nav.navigate(['/challenges'])"></Button>
         } @else {
           <Button class="btn btn-primary btn-cta" textWrap="true" text="🚀 מתחילים ללמוד (+50 🪙 מתנת פתיחה!)" (tap)="start()"></Button>
+          <Button class="btn" textWrap="true" text="🎵 מילון טעמי המקרא ודוגמאות שמע" (tap)="nav.navigate(['/taamim'])"></Button>
+        }
+
+        <!-- Parashat HaShavua Quick Card -->
+        @if (weeklyPortion(); as wp) {
+          <GridLayout columns="auto, *" class="card challenge-invite" (tap)="openWeeklyParasha()">
+            <Button col="0" class="btn-small btn-primary" textWrap="true" text="לתרגול" (tap)="openWeeklyParasha()"></Button>
+            <StackLayout col="1" verticalAlignment="center">
+              <Label class="cat-name" textWrap="true" [text]="'📅 פרשת השבוע: פרשת ' + wp.nameHe + ' (' + wp.bookNameHe + ')'"></Label>
+              <Label class="meta" textWrap="true" [text]="wp.rangeHe + ' · ' + wp.totalVerses + ' פסוקים · עלייה ראשונה חינם'"></Label>
+            </StackLayout>
+          </GridLayout>
         }
 
         <!-- Time-Span Challenge Card -->
@@ -120,6 +134,13 @@ export class WelcomeComponent implements OnInit {
   readonly line = computed(() => rabbiSays({ kind: 'welcome', returning: this.returning(), where: this.where() }));
   readonly summary = computed(() => computeCatalogPortionSummary(this.activePortion(), this.store.progress()));
   readonly challengeStatus = computed(() => computeChallengeStatus(this.store.progress().challengePlan, this.summary()));
+  readonly weeklyPortion = computed(() => this.content.getPortionMeta(getWeeklyParashaId()) ?? this.activePortion());
+
+  openWeeklyParasha(): void {
+    const wp = this.weeklyPortion();
+    this.store.updateProgress((p) => (p.welcomed = true));
+    this.nav.navigate(['/portion', wp.id], { queryParams: { aliyah: 1 } });
+  }
 
   ngOnInit(): void {
     if (this.store.settings().reminderEnabled) {

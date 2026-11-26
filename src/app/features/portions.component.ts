@@ -4,7 +4,7 @@ import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angula
 import { CATEGORY_NAME_HE, type Category } from '../analysis/types';
 import { BillingService } from '../core/billing.service';
 import { BOOKS, ContentService, hebrewNumber, PORTIONS } from '../core/content.service';
-import { computeCatalogPortionSummary } from '../core/gamification';
+import { computeCatalogPortionSummary, getWeeklyParashaId } from '../core/gamification';
 import { PARASHA_PRICE_LABEL_HE } from '../core/state';
 import { StoreService } from '../core/store.service';
 import { rabbiSays } from '../teaching/rabbi';
@@ -22,6 +22,9 @@ import { RabbiComponent } from '../ui/rabbi.component';
     <ActionBar title="חמשת חומשי התורה">
       <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
       <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="🎵 טעמים" class="ab-action" (tap)="nav.navigate(['/taamim'])"></Label>
+      </ActionItem>
+      <ActionItem android.position="actionBar" ios.position="right">
         <Label text="הגדרות" class="ab-action" (tap)="nav.navigate(['/settings'])"></Label>
       </ActionItem>
     </ActionBar>
@@ -29,6 +32,17 @@ import { RabbiComponent } from '../ui/rabbi.component';
       <StackLayout class="page">
         <gamification-bar></gamification-bar>
         <rabbi [line]="line"></rabbi>
+
+        <!-- Parashat HaShavua Shortcut Card -->
+        @if (weeklyPortion(); as wp) {
+          <GridLayout columns="auto, *" class="card challenge-invite" (tap)="jumpToWeeklyParasha()">
+            <Button col="0" class="btn-small btn-primary" textWrap="true" text="פתח פרשה" (tap)="jumpToWeeklyParasha()"></Button>
+            <StackLayout col="1" verticalAlignment="center">
+              <Label class="cat-name" textWrap="true" [text]="'📅 פרשת השבוע: פרשת ' + wp.nameHe + ' (חומש ' + wp.bookNameHe + ')'"></Label>
+              <Label class="meta" textWrap="true" [text]="wp.rangeHe + ' · ' + wp.totalVerses + ' פסוקים · לחצו למעבר מהיר'"></Label>
+            </StackLayout>
+          </GridLayout>
+        }
 
         <!-- 5 Books of the Torah (Chumashim) Selector -->
         <Label class="section" textWrap="true" text="📚 בחירת חומש (5 חומשי התורה)"></Label>
@@ -159,6 +173,15 @@ export class PortionsComponent {
   readonly selectedBookMeta = computed(() => this.content.getBook(this.selectedBookId()));
   readonly bookPortions = computed(() => this.content.getPortionsByBook(this.selectedBookId()));
   readonly selectedPortionMeta = computed(() => this.content.getPortionMeta(this.selectedPortionId()) ?? PORTIONS[0]);
+  readonly weeklyPortion = computed(() => this.content.getPortionMeta(getWeeklyParashaId()) ?? PORTIONS[0]);
+
+  jumpToWeeklyParasha(): void {
+    const wp = this.weeklyPortion();
+    this.selectedBookId.set(wp.book);
+    this.selectedPortionId.set(wp.id);
+    this.content.activePortionId.set(wp.id);
+    this.nav.navigate(['/portion', wp.id], { queryParams: { aliyah: 1 } });
+  }
 
   readonly summary = computed(() => computeCatalogPortionSummary(this.selectedPortionMeta(), this.store.progress()));
   readonly catEntries = computed(() => {

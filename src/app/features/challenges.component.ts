@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, inject, signal } from '@angular/core';
 import { goBack } from '../core/navigation';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
-import { ContentService } from '../core/content.service';
+import { Dialogs } from '@nativescript/core';
+import { BOOKS, ContentService, PORTIONS } from '../core/content.service';
 import {
+  ALIYAH_NAMES_HE,
   CHALLENGE_PRESETS,
   computeCatalogPortionSummary,
   computeChallengeStatus,
+  getWeeklyParashaId,
   type DailyQuest,
 } from '../core/gamification';
 import { sendLocalReminderNotification } from '../core/notifications';
@@ -77,8 +80,30 @@ const TIER_LADDER = [
           </GridLayout>
         }
 
+        <!-- Bar-Mitzvah & Shabbat Target Date Planner -->
+        <Label class="section" textWrap="true" text="🕍 מתכנן קריאה לתאריך יעד (בר־מצווה / שבת)"></Label>
+        <StackLayout class="card">
+          <Label class="card-title" textWrap="true" [text]="'פרשת יעד: פרשת ' + plannerPortion().nameHe + ' (' + plannerPortion().bookNameHe + ')'"></Label>
+          <Label class="meta" textWrap="true" [text]="plannerScopeLabel() + ' · סה״כ ' + plannerTotalVerses() + ' פסוקים · קצב מומלץ: ' + plannerDailyPace() + ' פסוקים ביום'"></Label>
+          <GridLayout columns="*, *" marginTop="6">
+            <Button col="1" class="btn-small" textWrap="true" text="📖 החלפת פרשה" (tap)="pickPlannerPortion()"></Button>
+            <Button col="0" class="btn-small" textWrap="true" [text]="'📜 היקף: ' + (plannerAliyah() === 0 ? 'כל הפרשה' : 'עלייה ' + plannerAliyah())" (tap)="pickPlannerScope()"></Button>
+          </GridLayout>
+          <ScrollView orientation="horizontal" scrollBarIndicatorVisible="false" marginTop="6">
+            <FlexboxLayout class="chapters" flexDirection="row" justifyContent="center">
+              @for (d of plannerDayChoices; track d) {
+                <Button class="chip" [class.chip-on]="plannerDays() === d" [text]="d + ' ימים'" (tap)="plannerDays.set(d)"></Button>
+              }
+              <Button class="chip" text="📅 ימים מותאם…" (tap)="promptCustomDays()"></Button>
+            </FlexboxLayout>
+          </ScrollView>
+          <Button class="btn btn-primary" textWrap="true" marginTop="6"
+            [text]="'🚀 הפעל תוכנית יעד (' + plannerDailyPace() + ' פסוקים ביום ל־' + plannerDays() + ' ימים)'"
+            (tap)="activateCustomPlan()"></Button>
+        </StackLayout>
+
         <!-- Time-Span Parasha / Aliyah Challenge -->
-        <Label class="section" textWrap="true" [text]="'⏱️ אתגר זמן ללימוד פרשת ' + activePortion().nameHe"></Label>
+        <Label class="section" textWrap="true" [text]="'⏱️ אתגר זמן פעיל לפרשת ' + activePortion().nameHe"></Label>
         @if (challengeStatus(); as cs) {
           <StackLayout class="challenge-active-card">
             <GridLayout columns="auto, *">
@@ -90,9 +115,10 @@ const TIER_LADDER = [
               <StackLayout class="meter-fill" horizontalAlignment="right" [width]="(cs.progressPct / 100) * 310"></StackLayout>
             </GridLayout>
             <Label class="challenge-pace" textWrap="true" [text]="cs.remainingVerses > 0 ? 'יעד יומי לסיום בזמן: ' + cs.versesPerDayNeeded + ' פסוקים ליום' : '🎉 השלמתם את יעד האתגר! כל הכבוד!'"></Label>
+            <Button class="btn btn-cta" textWrap="true" marginTop="6" text="▶ המשך לתרגול הפסוק הבא בתוכנית" (tap)="continueTargetPlan()"></Button>
           </StackLayout>
         } @else {
-          <Label class="meta" textWrap="true" text="בחרו טווח זמן ללימוד הפרשה או העלייה הנוכחית וקבלו יעד יומי ובונוס מטבעות ענק:"></Label>
+          <Label class="meta" textWrap="true" text="או בחרו אחד ממסלולי האתגר המהירים:"></Label>
         }
 
         @for (p of presets; track p.id) {
@@ -149,9 +175,112 @@ export class ChallengesComponent {
   readonly tiers = TIER_LADDER;
   readonly banner = signal<string | null>(null);
 
-  readonly activePortion = computed(() => this.content.portionOfVerse(this.store.progress().currentVerseId));
+  readonly activePortion = computed(() => {
+    const planPid = this.store.progress().challengePlan?.portionId;
+    if (planPid) {
+      const m = this.content.getPortionMeta(planPid);
+      if (m) return m;
+    }
+    return this.content.portionOfVerse(this.store.progress().currentVerseId);
+  });
   readonly summary = computed(() => computeCatalogPortionSummary(this.activePortion(), this.store.progress()));
   readonly challengeStatus = computed(() => computeChallengeStatus(this.store.progress().challengePlan, this.summary()));
+
+  // Bar-Mitzvah / Shabbat Target Date Planner state
+  readonly plannerDayChoices = [7, 14, 30, 60, 90];
+  readonly plannerPortionId = signal<string>(this.store.progress().challengePlan?.portionId ?? getWeeklyParashaId());
+  readonly plannerAliyah = signal<number>(this.store.progress().challengePlan?.targetType === 'aliyah' ? (this.store.progress().challengePlan?.aliyah ?? 1) : 0);
+  readonly plannerDays = signal<number>(this.store.progress().challengePlan?.targetDays ?? 30);
+
+  readonly plannerPortion = computed(() => this.content.getPortionMeta(this.plannerPortionId()) ?? PORTIONS[0]);
+  readonly plannerTotalVerses = computed(() => {
+    const meta = this.plannerPortion();
+    const al = this.plannerAliyah();
+    if (al === 0) return meta.totalVerses;
+    return meta.aliyot.find((a) => a.n === al)?.verseIds.length ?? meta.totalVerses;
+  });
+  readonly plannerDailyPace = computed(() => Math.max(1, Math.ceil(this.plannerTotalVerses() / Math.max(1, this.plannerDays()))));
+  readonly plannerScopeLabel = computed(() => {
+    const al = this.plannerAliyah();
+    return al === 0 ? 'כל 7 העליות בפרשה' : (ALIYAH_NAMES_HE[al]?.full ?? `עלייה ${al}`);
+  });
+
+  async pickPlannerPortion(): Promise<void> {
+    const bookChoices = BOOKS.map((b) => `חומש ${b.nameHePlain}`);
+    const bookPick = await Dialogs.action({
+      title: 'בחירת חומש לתוכנית היעד',
+      message: 'בחרו את החומש של פרשת בר־המצווה או השבת שלכם:',
+      cancelButtonText: 'ביטול',
+      actions: bookChoices,
+    });
+    const bookIdx = bookChoices.indexOf(bookPick);
+    if (bookIdx < 0) return;
+    const book = BOOKS[bookIdx];
+    const portions = this.content.getPortionsByBook(book.id);
+    const pChoices = portions.map((p) => `פרשת ${p.nameHe}`);
+    const pPick = await Dialogs.action({
+      title: `בחירת פרשה בחומש ${book.nameHePlain}`,
+      cancelButtonText: 'ביטול',
+      actions: pChoices,
+    });
+    const pIdx = pChoices.indexOf(pPick);
+    if (pIdx >= 0) {
+      this.plannerPortionId.set(portions[pIdx].id);
+    }
+  }
+
+  async pickPlannerScope(): Promise<void> {
+    const actions = [
+      'כל הפרשה (עליות א׳–ז׳)',
+      ...[1, 2, 3, 4, 5, 6, 7].map((a) => ALIYAH_NAMES_HE[a].full),
+    ];
+    const res = await Dialogs.action({
+      title: 'בחירת היקף הקריאה',
+      cancelButtonText: 'ביטול',
+      actions,
+    });
+    const idx = actions.indexOf(res);
+    if (idx >= 0) {
+      this.plannerAliyah.set(idx); // 0 = whole parasha, 1..7 = specific aliyah
+    }
+  }
+
+  async promptCustomDays(): Promise<void> {
+    const res = await Dialogs.prompt({
+      title: '📅 מספר ימים עד לתאריך היעד',
+      message: 'הזינו את מספר הימים שנותרו עד לשבת או לבר־המצווה (1–365):',
+      okButtonText: 'אישור',
+      cancelButtonText: 'ביטול',
+      defaultText: String(this.plannerDays()),
+    });
+    if (res.result && res.text) {
+      const n = parseInt(res.text.trim(), 10);
+      if (!isNaN(n) && n >= 1 && n <= 365) {
+        this.plannerDays.set(n);
+      }
+    }
+  }
+
+  activateCustomPlan(): void {
+    const meta = this.plannerPortion();
+    const al = this.plannerAliyah();
+    this.store.startCustomTargetPlan({
+      portionId: meta.id,
+      portionNameHe: meta.nameHe,
+      targetDays: this.plannerDays(),
+      targetType: al === 0 ? 'parasha' : 'aliyah',
+      aliyah: al === 0 ? undefined : al,
+    });
+    const firstVerseId = al === 0 ? meta.aliyot[0].verseIds[0] : (meta.aliyot.find((a) => a.n === al)?.verseIds[0] ?? meta.aliyot[0].verseIds[0]);
+    this.store.updateProgress((p) => (p.currentVerseId = firstVerseId));
+    this.banner.set(`🕍 תוכנית היעד לפרשת ${meta.nameHe} הופעלה (${this.plannerDailyPace()} פסוקים ביום)!`);
+  }
+
+  continueTargetPlan(): void {
+    const meta = this.activePortion();
+    const al = this.store.progress().challengePlan?.aliyah ?? 1;
+    this.nav.navigate(['/portion', meta.id], { queryParams: { aliyah: al } });
+  }
 
   claim(q: DailyQuest): void {
     if (this.store.claimDailyQuest(q.id)) {

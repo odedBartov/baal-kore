@@ -28,6 +28,9 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
     <ActionBar [title]="label">
       <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
       <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="🎵 טעמים" class="ab-action" (tap)="nav.navigate(['/taamim'])"></Label>
+      </ActionItem>
+      <ActionItem android.position="actionBar" ios.position="right">
         <Label text="הגדרות" class="ab-action" (tap)="nav.navigate(['/settings'])"></Label>
       </ActionItem>
     </ActionBar>
@@ -35,7 +38,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
       <StackLayout class="page">
         <gamification-bar [compact]="true"></gamification-bar>
         <rabbi [line]="line()"></rabbi>
-        <verse-text [verse]="verse" [activeWord]="activeWord()"></verse-text>
+        <verse-text [verse]="verse" [activeWord]="activeWord()" (wordTap)="playWord($event)"></verse-text>
         @if (verse.notes.length) {
           <Label class="note" textWrap="true" [text]="'הערת נוסח: ' + verse.notes.join(' ')"></Label>
         }
@@ -48,8 +51,11 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
         </FlexboxLayout>
 
         @if (ref) {
-          <Button class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : preparing() ? 'מכין את ההקלטה…' : 'השמעת הקורא'" (tap)="listen()"
-            [isEnabled]="!rec.active() && !analyzing() && !preparing()"></Button>
+          <GridLayout columns="*, auto">
+            <Button col="0" class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : preparing() ? 'מכין את ההקלטה…' : 'השמעת הקורא'" (tap)="listen()"
+              [isEnabled]="!rec.active() && !analyzing() && !preparing()"></Button>
+            <Button col="1" class="btn-small" [class.btn-primary]="playback.speed() < 1" textWrap="true" [text]="playback.speed() < 1 ? '🐢 0.75×' : '1.0×'" (tap)="playback.toggleSpeed()"></Button>
+          </GridLayout>
           @if (refSeries().length) {
             <pitch-chart title="המנגינה של הקורא" [series]="refSeries()" [durationMs]="refContour()!.durationMs" [wordStartsMs]="refStarts()" [words]="chartWords" [activeWord]="activeWord()"
               [playheadMs]="playback.playing() === 'ref' ? playback.positionMs() : null" [yad]="true" [width]="chartW"></pitch-chart>
@@ -112,7 +118,14 @@ export class PracticeComponent implements OnDestroy {
   readonly refContour = signal<ContourResult | null>(null);
   readonly last = signal(this.store.evaluations.get(this.verse.id));
 
-  readonly activeWord = computed(() => (this.playback.playing() === 'ref' ? wordAt(this.playback.positionMs(), this.refStarts()) : null));
+  private readonly tappedWord = signal<number | null>(null);
+  readonly activeWord = computed(() =>
+    this.playback.playing() === 'word'
+      ? this.tappedWord()
+      : this.playback.playing() === 'ref'
+        ? wordAt(this.playback.positionMs(), this.refStarts())
+        : null,
+  );
   readonly refSeries = computed<ChartSeries[]>(() => (this.refContour() ? [{ points: this.refContour()!.semitones, color: '#2f6fd0', lane: true }] : []));
   readonly chartWords = this.verse.words.map((w) => stripAccents(w.text));
   readonly lastSeries = computed<ChartSeries[]>(() => (this.last() ? [{ points: this.last()!.charts.student.semitones, color: '#e07b00' }] : []));
@@ -164,6 +177,17 @@ export class PracticeComponent implements OnDestroy {
       this.error.set(`לא הצלחתי להשמיע את הקורא: ${e}`);
     } finally {
       this.preparing.set(false);
+    }
+  }
+
+  async playWord(wordIndex: number): Promise<void> {
+    if (!this.ref || this.rec.active() || this.analyzing()) return;
+    try {
+      this.tappedWord.set(wordIndex);
+      const c = await this.audio.phraseClip(this.verse.id, this.ref, wordIndex, wordIndex);
+      this.playback.play(c.path, 'word', 0, null, () => this.tappedWord.set(null));
+    } catch {
+      this.tappedWord.set(null);
     }
   }
 

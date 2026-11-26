@@ -8,6 +8,7 @@ import { ResultsComponent } from './features/results.component';
 import { SettingsComponent } from './features/settings.component';
 import { ChallengesComponent } from './features/challenges.component';
 import { ShopComponent } from './features/shop.component';
+import { TaamimComponent } from './features/taamim.component';
 import { AudioSpikeComponent } from './spike/audio-spike.component';
 
 export const routes: Routes = [
@@ -19,6 +20,7 @@ export const routes: Routes = [
   { path: 'results/:id', component: ResultsComponent },
   { path: 'challenges', component: ChallengesComponent },
   { path: 'shop', component: ShopComponent },
+  { path: 'taamim', component: TaamimComponent },
   { path: 'settings', component: SettingsComponent },
   { path: 'diagnostics', component: AudioSpikeComponent },
 ];

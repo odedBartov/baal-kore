@@ -15,10 +15,12 @@ import {
   isUnlocked,
   migrateProgress,
   migrateSettings,
+  PLAY_SKU_ALL_TORAH,
+  PLAY_SKU_CHUMASH,
   playProductIdForPortion,
   portionIdFromPlayProductId,
 } from '../src/app/core/state';
-import { applyEffortReward, computeParashaSummary, getUserRank } from '../src/app/core/gamification';
+import { applyEffortReward, computeChallengeStatus, computeParashaSummary, getUserRank, getWeeklyParashaId } from '../src/app/core/gamification';
 import {
   findRevokedCouponIds,
   hashCouponCode,
@@ -251,4 +253,30 @@ test('paywall: Aliyah 1 is always free with all verses open; Aliyot 2–7 requir
   };
   assert.equal(verifyCouponAgainstManifest('vipSecret', revokedManifest).status, 'revoked');
   assert.deepEqual(findRevokedCouponIds(['test-vip'], revokedManifest), ['test-vip']);
+
+  // Bundle SKUs & Weekly Parasha + Target Date Planner calculations
+  assert.equal(PLAY_SKU_CHUMASH, 'chumash_unlock');
+  assert.equal(PLAY_SKU_ALL_TORAH, 'all_torah_unlock');
+  assert.equal(getWeeklyParashaId(new Date('2026-10-05T12:00:00Z')), 'bereshit');
+  assert.equal(getWeeklyParashaId(new Date('2026-10-12T12:00:00Z')), 'noach');
+  assert.equal(getWeeklyParashaId(new Date('2026-10-19T12:00:00Z')), 'lech-lecha');
+  const sum = computeParashaSummary(portion.verses, p, (n) => String(n));
+  const status = computeChallengeStatus(
+    {
+      id: 'custom-bereshit-30d',
+      titleHe: 'תוכנית יעד: כל פרשת בראשית ב־30 ימים',
+      targetDays: 30,
+      targetType: 'parasha',
+      portionId: 'bereshit',
+      startedAt: '2026-11-01',
+      rewardCoins: 150,
+      rewardXp: 360,
+    },
+    sum,
+    '2026-11-11',
+  );
+  assert.ok(status && status.active);
+  assert.equal(status.daysLeft, 20);
+  assert.equal(status.totalTargetVerses, 146);
+  assert.ok(status.versesPerDayNeeded >= 7);
 });

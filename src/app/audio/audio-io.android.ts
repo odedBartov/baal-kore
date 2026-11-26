@@ -62,9 +62,11 @@ export class Recorder {
 
 export class Player {
   private mp: android.media.MediaPlayer | null = null;
+  private currentSpeed = 1.0;
 
-  play(path: string, onEnd?: () => void, startMs = 0): void {
+  play(path: string, onEnd?: () => void, startMs = 0, speed = 1.0): void {
     this.stop();
+    this.currentSpeed = speed;
     const mp = new android.media.MediaPlayer();
     mp.setDataSource(path);
     mp.setOnCompletionListener(
@@ -78,7 +80,25 @@ export class Player {
     mp.prepare();
     if (startMs > 0) mp.seekTo(Math.round(startMs));
     mp.start();
+    if (speed !== 1.0) {
+      try {
+        mp.setPlaybackParams(mp.getPlaybackParams().setSpeed(speed));
+      } catch {
+        // Fallback to normal speed if device codec does not support time-stretch
+      }
+    }
     this.mp = mp;
+  }
+
+  setSpeed(speed: number): void {
+    this.currentSpeed = speed;
+    if (this.mp) {
+      try {
+        this.mp.setPlaybackParams(this.mp.getPlaybackParams().setSpeed(speed));
+      } catch {
+        // Ignore if not supported while playing
+      }
+    }
   }
 
   stop(): void {

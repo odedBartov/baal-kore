@@ -43,6 +43,7 @@ declare const com: {
 
 export type WorkerRequest =
   | { type: 'decode'; src: string; dst: string; startMs: number; endMs: number }
+  | { type: 'prefetch-aliyah'; portionId: string; aliyah: number; cacheDir: string }
   | {
       type: 'prepare-asael-verse';
       portionId: string;
@@ -278,6 +279,14 @@ function handle(req: WorkerRequest): WorkerResult {
   switch (req.type) {
     case 'decode':
       return { sampleRate: com.baalkore.app.AudioDecoder.decodeToWav(req.src, req.dst, Math.round(req.startMs), Math.round(req.endMs)) };
+    case 'prefetch-aliyah': {
+      const url = studioAudioUrl(req.portionId, req.aliyah);
+      if (url) {
+        const mp3Path = `${req.cacheDir}/${req.portionId}-aliyah-${req.aliyah}-studio.mp3`;
+        com.baalkore.app.AudioDecoder.downloadIfMissing(url, mp3Path);
+      }
+      return {};
+    }
     case 'prepare-asael-verse':
       return prepareAsaelVerse(req);
     case 'synth-reference': {

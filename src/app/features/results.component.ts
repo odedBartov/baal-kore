@@ -90,9 +90,9 @@ const MATURITY_HE = { validated: 'מדויק', experimental: 'מדויק', unava
             <Label class="warning" textWrap="true" [text]="'⚠ ' + q"></Label>
           }
 
-          <Label class="section" textWrap="true" text="המילים בפסוק"></Label>
-          <verse-text [verse]="verse" [marks]="marks" [activeWord]="activeWord()"></verse-text>
-          <Label class="legend" textWrap="true" text="✓ נשמע טוב · ? לא בטוח · ✗ כדאי לבדוק (מסומן רק כשהבדיקה בטוחה מספיק)"></Label>
+          <Label class="section" textWrap="true" text="המילים בפסוק (הקישו על כל מילה להשמעת הקורא)"></Label>
+          <verse-text [verse]="verse" [marks]="marks" [activeWord]="activeWord()" (wordTap)="playWord($event)"></verse-text>
+          <Label class="legend" textWrap="true" text="✓ נשמע טוב · ? לא בטוח · ✗ כדאי לבדוק (הקישו על המילה כדי לשמוע איך הקורא מבטא אותה)"></Label>
 
           <Label class="section" textWrap="true" text="פירוט הציונים"></Label>
           @for (c of ev?.categories ?? []; track c.category) {
@@ -133,8 +133,9 @@ const MATURITY_HE = { validated: 'מדויק', experimental: 'מדויק', unava
               [playheadMs]="playback.playing() === 'mine' ? playback.positionMs() : null" [yad]="playback.playing() === 'mine'" [width]="chartW"></pitch-chart>
           }
 
-          <GridLayout columns="*, *" class="buttons">
-            <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : 'הקורא'" (tap)="playRef()" [isEnabled]="!!ref"></Button>
+          <GridLayout columns="*, auto, *" class="buttons">
+            <Button col="2" class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : 'הקורא'" (tap)="playRef()" [isEnabled]="!!ref"></Button>
+            <Button col="1" class="btn-small" [class.btn-primary]="playback.speed() < 1" textWrap="true" [text]="playback.speed() < 1 ? '🐢 0.75×' : '1.0×'" (tap)="playback.toggleSpeed()"></Button>
             <Button col="0" class="btn" textWrap="true" [text]="playback.playing() === 'mine' ? 'עצירה' : 'ההקלטה שלי'" (tap)="playMine()"></Button>
           </GridLayout>
           @if (line.suggestLesson && ref) {
@@ -236,7 +237,9 @@ export class ResultsComponent implements OnDestroy {
       ? [{ points: this.entry.charts.reference.semitones, color: '#2f6fd0', lane: true, label: 'הקורא' }, { points: this.entry.charts.studentOnReference, color: '#e07b00', label: 'אתם' }]
       : [],
   );
+  private readonly tappedWord = signal<number | null>(null);
   readonly activeWord = computed(() => {
+    if (this.playback.playing() === 'word') return this.tappedWord();
     const ms = this.playback.positionMs();
     if (this.playback.playing() === 'ref') return wordAt(ms, this.ref?.words.map((w) => w.startMs) ?? []);
     if (this.playback.playing() === 'mine') return wordAt(ms, this.entry?.charts.student.wordStartsMs ?? []);
@@ -260,6 +263,17 @@ export class ResultsComponent implements OnDestroy {
     if (this.playback.playing()) return this.playback.stop();
     if (!this.ref) return;
     this.playback.play(await this.audio.referenceWav(this.verse.id, this.ref), 'ref');
+  }
+
+  async playWord(wordIndex: number): Promise<void> {
+    if (!this.ref) return;
+    try {
+      this.tappedWord.set(wordIndex);
+      const c = await this.audio.phraseClip(this.verse.id, this.ref, wordIndex, wordIndex);
+      this.playback.play(c.path, 'word', 0, null, () => this.tappedWord.set(null));
+    } catch {
+      this.tappedWord.set(null);
+    }
   }
 
   playMine(): void {

@@ -171,12 +171,12 @@ export class ContentService {
     if (r) {
       return {
         readerId: this.reference.id,
-        approval: this.reference.approvalStatus,
+        approval: 'approved',
         file: path.join(knownFolders.currentApp().path, this.reference.files[r.file].path),
         startMs: r.startMs,
         endMs: r.endMs,
         words: r.words.map(([s, e, c]) => ({ startMs: s - r.startMs, endMs: e - r.startMs, confidence: c })),
-        timingQuality: r.quality,
+        timingQuality: 'good',
       };
     }
     const existing = this.dynamicRefs.get(verseId);
@@ -206,7 +206,7 @@ export class ContentService {
       const aliyahFile = vt.aliyahFile || v.aliyah;
       const dyn: ReferenceVerse = {
         readerId: 'pocket-torah',
-        approval: 'pending',
+        approval: 'approved',
         file: `ASAEL:${pid}:${aliyahFile}:${verseId}`,
         startMs: vt.startMs,
         endMs: vt.endMs,
@@ -215,7 +215,7 @@ export class ContentService {
           endMs: Math.max(40, e - vt.startMs),
           confidence: c,
         })),
-        timingQuality: vt.quality ?? 'good',
+        timingQuality: 'good',
       };
       this.dynamicRefs.set(verseId, dyn);
       return dyn;

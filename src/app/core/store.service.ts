@@ -232,9 +232,16 @@ export class StoreService {
 
   /** Marks a Parasha (Aliyot 2–7) as purchased via Google Play Billing. */
   markPortionPurchased(portionId: string): void {
+    this.markPortionsPurchased([portionId]);
+  }
+
+  /** Marks multiple Parashot (e.g. an entire Chumash or all 54 Parashot) as purchased via Google Play Billing. */
+  markPortionsPurchased(portionIds: string[]): void {
     this.updateProgress((p) => {
-      if (!p.purchasedPortionIds.includes(portionId)) {
-        p.purchasedPortionIds.push(portionId);
+      for (const id of portionIds) {
+        if (!p.purchasedPortionIds.includes(id)) {
+          p.purchasedPortionIds.push(id);
+        }
       }
     });
   }
@@ -330,14 +337,40 @@ export class StoreService {
     return true;
   }
 
-  startChallenge(presetId: string, aliyah = 1): void {
+  startChallenge(presetId: string, aliyah = 1, portionId?: string): void {
     const preset = CHALLENGE_PRESETS.find((c) => c.id === presetId);
     if (!preset) return;
     this.updateProgress((p) => {
       p.challengePlan = {
         ...preset,
+        portionId,
         aliyah: preset.targetType === 'aliyah' ? aliyah : undefined,
         startedAt: todayIso(),
+        completed: false,
+      };
+    });
+  }
+
+  startCustomTargetPlan(opts: {
+    portionId: string;
+    portionNameHe: string;
+    targetDays: number;
+    targetType: 'parasha' | 'aliyah';
+    aliyah?: number;
+  }): void {
+    const days = Math.max(1, Math.min(365, Math.round(opts.targetDays)));
+    const scopeHe = opts.targetType === 'aliyah' ? `עלייה ${opts.aliyah ?? 1} בפרשת ${opts.portionNameHe}` : `כל פרשת ${opts.portionNameHe}`;
+    this.updateProgress((p) => {
+      p.challengePlan = {
+        id: `custom-${opts.portionId}-${days}d`,
+        titleHe: `תוכנית יעד: ${scopeHe} ב־${days} ימים`,
+        targetDays: days,
+        targetType: opts.targetType,
+        portionId: opts.portionId,
+        aliyah: opts.targetType === 'aliyah' ? (opts.aliyah ?? 1) : undefined,
+        startedAt: todayIso(),
+        rewardCoins: Math.min(500, Math.max(60, days * 5)),
+        rewardXp: Math.min(1200, Math.max(150, days * 12)),
         completed: false,
       };
     });

@@ -118,6 +118,13 @@ export class AudioService {
     return { path, ...b };
   }
 
+  /** Quietly prefetches the studio Aliyah MP3 in the background so the first tap on "האזנה לדוגמה" is instant. */
+  prefetchAliyah(portionId: string, aliyah: number): void {
+    if (portionId === 'bereshit') return;
+    const cacheDir = this.folder(knownFolders.documents(), 'studio-reference-cache');
+    void this.run({ type: 'prefetch-aliyah', portionId, aliyah, cacheDir }).catch(() => undefined);
+  }
+
   contour(wav: string): Promise<ContourResult> {
     if (!this.contours.has(wav)) this.contours.set(wav, this.run<ContourResult>({ type: 'contour', wav }).catch((e) => (this.contours.delete(wav), Promise.reject(e))));
     return this.contours.get(wav)!;

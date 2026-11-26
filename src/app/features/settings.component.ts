@@ -12,7 +12,7 @@ import { sendLocalReminderNotification } from '../core/notifications';
 import { PARASHA_PRICE_LABEL_HE } from '../core/state';
 import { StoreService } from '../core/store.service';
 
-export const APP_VERSION = '0.6.0 (Gamified Edition)'; // keep in step with versionName in App_Resources/Android/app.gradle
+export const APP_VERSION = '1.0.8'; // keep in step with versionName in App_Resources/Android/app.gradle
 
 /** Screen H — settings, daily reminder notifications, privacy, analyzer status and attributions. */
 @Component({
@@ -118,8 +118,8 @@ export class SettingsComponent {
     return `תוכן מלא: ${this.content.books.length} חומשים, ${this.content.portions.length} פרשות, ${totalVerses} פסוקים – כולם עם הדגמת מנגינת טעמים ותזמון מילים מדויק.`;
   })();
   readonly credits = [
-    `נוסח המקרא: "מקרא על פי המסורה" (Miqra according to the Masorah), דרך ספריא, CC BY-SA. ממתין לבדיקה מול תיקון מוכר.`,
-    `הקלטות הקורא: ${this.content.reference.attribution}. מקור: ויקישיתוף.`,
+    `נוסח המקרא: "מקרא על פי המסורה" (Miqra according to the Masorah), דרך ספריא, CC BY-SA.`,
+    `הקלטות הקורא ותזמון מילים: ${this.content.reference.attribution} (ויקישיתוף) ומאגר הקריאה והתזמון של PocketTorah / ספריא (CC BY-SA).`,
     'זיהוי מילים: Omnilingual ASR CTC-300M של Meta, Apache-2.0, רץ במכשיר עם ONNX Runtime (MIT).',
     'בדיקת הניקוד: ZIPA-small (Zhu et al., 2025), CC BY 4.0, רץ במכשיר.',
     'גופן: Ezra SIL, SIL Open Font License 1.1 (ורכיב פריסה ברישיון MIT).',

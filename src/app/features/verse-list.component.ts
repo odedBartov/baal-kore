@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, NO_ERRORS_SCHEMA, computed, effect, inject, signal } from '@angular/core';
 import { goBack } from '../core/navigation';
 import { ActivatedRoute } from '@angular/router';
 import { NativeScriptCommonModule, RouterExtensions } from '@nativescript/angular';
 import { Dialogs } from '@nativescript/core';
+import { AudioService } from '../core/audio.service';
 import { BillingService } from '../core/billing.service';
 import { ContentService, hebrewNumber } from '../core/content.service';
 import { computeParashaSummary, gradeRankForScore } from '../core/gamification';
@@ -116,6 +117,7 @@ import { GamificationBarComponent } from '../ui/gamification-bar.component';
 export class VerseListComponent {
   private readonly nav = inject(RouterExtensions);
   private readonly route = inject(ActivatedRoute);
+  private readonly audio = inject(AudioService);
   readonly content = inject(ContentService);
   readonly store = inject(StoreService);
   readonly billing = inject(BillingService);
@@ -133,6 +135,12 @@ export class VerseListComponent {
 
   constructor() {
     this.content.activePortionId.set(this.portionId);
+    effect(() => {
+      const al = this.aliyah();
+      if (this.store.isAliyahAccessible(this.portionId, al)) {
+        this.audio.prefetchAliyah(this.portionId, al);
+      }
+    });
   }
 
   goBack(): void {

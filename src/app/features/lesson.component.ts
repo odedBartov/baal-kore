@@ -30,6 +30,9 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
     <ActionBar title="שיעור טעמים">
       <NavigationButton text="חזרה" android.systemIcon="ic_menu_back" (tap)="goBack()"></NavigationButton>
       <ActionItem android.position="actionBar" ios.position="right">
+        <Label text="🎵 מילון טעמים" class="ab-action" (tap)="openTaamim()"></Label>
+      </ActionItem>
+      <ActionItem android.position="actionBar" ios.position="right">
         <Label text="הגדרות" class="ab-action" (tap)="openSettings()"></Label>
       </ActionItem>
     </ActionBar>
@@ -49,7 +52,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
               </StackLayout>
             </GridLayout>
           }
-          <verse-text [verse]="verse" [focus]="u.wordIndexes" [activeWord]="activeWord()"></verse-text>
+          <verse-text [verse]="verse" [focus]="u.wordIndexes" [activeWord]="activeWord()" (wordTap)="playWord($event)"></verse-text>
           @if (chart().length) {
             <pitch-chart [title]="chart().length > 1 ? 'השירה שלכם מול הקורא (בלי הבדלי גובה)' : 'המנגינה של הצירוף'"
               [series]="chart()" [durationMs]="segment().endMs - segment().startMs" [wordStartsMs]="segmentWordStarts()" [words]="unitWords()" [activeWord]="activeWordInUnit()"
@@ -63,8 +66,9 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
             <Label class="error" textWrap="true" text="אין הקלטת קורא לפסוק הזה, ולכן אי אפשר להשמיע דוגמה או לבדוק את השירה."></Label>
             <Button class="btn btn-primary" textWrap="true" text="המשך לפסוק" (tap)="finish()"></Button>
           } @else {
-            <GridLayout columns="*, *" class="buttons">
-              <Button col="1" class="btn" textWrap="true" [text]="playback.playing() === 'demo' ? 'עצירה' : preparing() ? 'מכין דוגמה…' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
+            <GridLayout columns="*, auto, *" class="buttons">
+              <Button col="2" class="btn" textWrap="true" [text]="playback.playing() === 'demo' ? 'עצירה' : preparing() ? 'מכין דוגמה…' : 'האזנה לדוגמה'" (tap)="demo()" [isEnabled]="!rec.active() && !busy()"></Button>
+              <Button col="1" class="btn-small" [class.btn-primary]="playback.speed() < 1" textWrap="true" [text]="playback.speed() < 1 ? '🐢 0.75×' : '1.0×'" (tap)="playback.toggleSpeed()"></Button>
               <Button col="0" class="btn btn-record" textWrap="true" [text]="rec.active() ? 'סיום' : 'הקלטה'" (tap)="record()" [isEnabled]="heard() && !busy()"></Button>
             </GridLayout>
             @if (rec.active()) {
@@ -116,6 +120,9 @@ export class LessonComponent implements OnDestroy {
   openSettings(): void {
     this.nav.navigate(['/settings']);
   }
+  openTaamim(): void {
+    this.nav.navigate(['/taamim']);
+  }
 
   readonly verse = this.content.verse(this.route.snapshot.params['verseId'])!;
   readonly portionMeta = this.content.portionOfVerse(this.verse.id);
@@ -153,11 +160,13 @@ export class LessonComponent implements OnDestroy {
     return w === null || !u ? null : u.wordIndexes.indexOf(w);
   });
   readonly activeWord = computed(() => {
+    if (this.playback.playing() === 'word') return this.tappedWord();
     const u = this.unit(), ms = this.playback.positionMs();
     if (!u || ms === null || this.playback.playing() !== 'demo') return null;
     const k = wordAt(ms, this.segmentWordStarts());
     return k === null ? null : u.wordIndexes[k];
   });
+  private readonly tappedWord = signal<number | null>(null);
   readonly chart = computed<ChartSeries[]>(() => {
     const c = this.refContour(), chk = this.check();
     // Both before and after a check, the reference contour comes from the exact phrase clip (same median, zero shift).
@@ -238,6 +247,20 @@ export class LessonComponent implements OnDestroy {
     if (!c) return;
     this.line.set(rabbiSays({ kind: 'listening' }));
     this.playback.play(c.path, 'demo', 0, null, () => this.heard.set(true));
+  }
+
+  async playWord(wordIndex: number): Promise<void> {
+    if (!this.ref || this.rec.active() || this.busy()) return;
+    try {
+      this.tappedWord.set(wordIndex);
+      const c = await this.audio.phraseClip(this.verse.id, this.ref, wordIndex, wordIndex);
+      this.playback.play(c.path, 'word', 0, null, () => {
+        this.tappedWord.set(null);
+        this.heard.set(true);
+      });
+    } catch {
+      this.tappedWord.set(null);
+    }
   }
 
   async record(): Promise<void> {

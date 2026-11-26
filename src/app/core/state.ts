@@ -8,7 +8,15 @@ export type RabbiFrame = 'classic' | 'gold' | 'crown' | 'emerald';
 export const PARASHA_PRICE_ILS = 10;
 export const PARASHA_PRICE_LABEL_HE = '10 ₪';
 
+export const CHUMASH_PRICE_ILS = 39;
+export const CHUMASH_PRICE_LABEL_HE = '39 ₪';
+
+export const ALL_TORAH_PRICE_ILS = 119;
+export const ALL_TORAH_PRICE_LABEL_HE = '119 ₪';
+
 export const PLAY_SKU_FULL = 'parasha_unlock';
+export const PLAY_SKU_CHUMASH = 'chumash_unlock';
+export const PLAY_SKU_ALL_TORAH = 'all_torah_unlock';
 
 /**
  * Google Play Console reusable One-Time Product ID (SKU) for unlocking Aliyot 2–7 of any Parasha (`parasha_unlock`, 10 ₪).
@@ -35,6 +43,7 @@ export interface ChallengePlan {
   targetDays: number;
   startedAt: string; // YYYY-MM-DD
   targetType: 'parasha' | 'aliyah';
+  portionId?: string;
   aliyah?: number; // 1..7 when targetType === 'aliyah'
   rewardCoins: number;
   rewardXp: number;

@@ -122,10 +122,42 @@ export const FRAME_CATALOG: { id: RabbiFrame; nameHe: string; titleBadgeHe: stri
 
 export const CHALLENGE_PRESETS: Omit<ChallengePlan, 'startedAt' | 'completed'>[] = [
   { id: 'aliyah-3d', titleHe: 'אתגר בזק: עלייה ב־3 ימים', targetDays: 3, targetType: 'aliyah', rewardCoins: 60, rewardXp: 150 },
-  { id: 'parasha-7d', titleHe: 'מרתון הפרשה ב־7 ימים', targetDays: 7, targetType: 'parasha', rewardCoins: 250, rewardXp: 600 },
+  { id: 'parasha-7d', titleHe: 'מרתון הפרשה ב־7 ימים (לשבת הקרובה)', targetDays: 7, targetType: 'parasha', rewardCoins: 250, rewardXp: 600 },
   { id: 'parasha-14d', titleHe: 'אתגר שבועיים: כל הפרשה ב־14 ימים', targetDays: 14, targetType: 'parasha', rewardCoins: 180, rewardXp: 450 },
-  { id: 'parasha-30d', titleHe: 'מסלול בר־מצווה: פרשה ב־30 ימים', targetDays: 30, targetType: 'parasha', rewardCoins: 150, rewardXp: 400 },
+  { id: 'parasha-30d', titleHe: 'מסלול חודשי: פרשה ב־30 ימים', targetDays: 30, targetType: 'parasha', rewardCoins: 150, rewardXp: 400 },
+  { id: 'barmitzva-60d', titleHe: 'מסלול הכנה לבר־מצווה: 60 ימים', targetDays: 60, targetType: 'parasha', rewardCoins: 300, rewardXp: 800 },
+  { id: 'barmitzva-90d', titleHe: 'תוכנית רב־קורא לבר־מצווה: 90 ימים', targetDays: 90, targetType: 'parasha', rewardCoins: 400, rewardXp: 1000 },
 ];
+
+const CANONICAL_PORTION_ORDER: string[] = [
+  'bereshit', 'noach', 'lech-lecha', 'vayera', 'chayei-sarah', 'toldot', 'vayetzei', 'vayishlach', 'vayeshev', 'miketz', 'vayigash', 'vayechi',
+  'shemot', 'vaera', 'bo', 'beshalach', 'yitro', 'mishpatim', 'terumah', 'tetzaveh', 'ki-tisa', 'vayakhel', 'pekudei',
+  'vayikra', 'tzav', 'shemini', 'tazria', 'metzora', 'acharei-mot', 'kedoshim', 'emor', 'behar', 'bechukotai',
+  'bamidbar', 'naso', 'behaalotcha', 'shelach', 'korach', 'chukat', 'balak', 'pinchas', 'matot', 'masei',
+  'devarim', 'vaetchanan', 'eikev', 'reeh', 'shoftim', 'ki-teitzei', 'ki-tavo', 'nitzavim', 'vayelech', 'haazinu', 'vzot-haberachah',
+];
+
+/**
+ * Computes the weekly Parasha (פרשת השבוע) ID for any calendar date based on the annual Simchat Torah / Shabbat Bereshit cycle.
+ */
+export function getWeeklyParashaId(now = new Date()): string {
+  // Simchat Torah / start of Bereshit week anchors (Sunday of Bereshit week)
+  const anchors = [
+    new Date('2024-10-20T00:00:00Z').getTime(), // 5785
+    new Date('2025-10-12T00:00:00Z').getTime(), // 5786
+    new Date('2026-10-04T00:00:00Z').getTime(), // 5787
+    new Date('2027-10-24T00:00:00Z').getTime(), // 5788
+    new Date('2028-10-08T00:00:00Z').getTime(), // 5789
+  ];
+  const t = now.getTime();
+  let anchor = anchors[0];
+  for (const a of anchors) {
+    if (t >= a) anchor = a;
+  }
+  const weeksSinceStart = Math.max(0, Math.floor((t - anchor) / (7 * 86_400_000)));
+  const idx = Math.min(CANONICAL_PORTION_ORDER.length - 1, weeksSinceStart % CANONICAL_PORTION_ORDER.length);
+  return CANONICAL_PORTION_ORDER[idx];
+}
 
 const LEVEL_THRESHOLDS = [0, 120, 280, 500, 780, 1120, 1520, 2000, 2550, 3200, 4000];
 

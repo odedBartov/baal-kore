@@ -84,6 +84,7 @@ export class ContentService {
   private readonly byId = new Map<string, VerseData>(this.verses.map((v) => [v.id, v]));
   private readonly portionMetaById = new Map<string, PortionCatalogEntry>(PORTIONS.map((p) => [p.id, p]));
   private readonly verseToPortionId = new Map<string, string>();
+  private readonly dynamicRefs = new Map<string, ReferenceVerse>();
 
   constructor() {
     for (const p of PORTIONS) {
@@ -161,7 +162,8 @@ export class ContentService {
   /**
    * Reference reading for any verse across all 54 Parashot:
    * - Parashat Bereshit uses Asael Israeli's bundled Ogg recordings + aligned word timings.
-   * - All other 53 Parashot use the on-device Masoretic Cantillation Reference Engine (`cantillation-synth`).
+   * - All other 53 Parashot use Asael Israeli's Wikimedia Commons Ogg recordings, downloaded on-demand
+   *   and aligned against the Masoretic text via CTC forced alignment (`prepare-asael-verse`).
    */
   referenceFor(verseId: string): ReferenceVerse | null {
     const r = this.reference.verses[verseId];
@@ -176,18 +178,38 @@ export class ContentService {
         timingQuality: r.quality,
       };
     }
+    const existing = this.dynamicRefs.get(verseId);
+    if (existing) return existing;
+
     const v = this.verse(verseId);
     if (!v) return null;
+    const pid = this.verseToPortionId.get(verseId) ?? 'bereshit';
     const sched = computeSyntheticVerseSchedule(v);
-    return {
-      readerId: 'cantillation-synth',
-      approval: 'approved',
-      file: `SYNTH:${verseId}`,
+    const dyn: ReferenceVerse = {
+      readerId: 'asael-israeli',
+      approval: 'pending',
+      file: `ASAEL:${pid}:${v.aliyah}:${verseId}`,
       startMs: sched.startMs,
       endMs: sched.endMs,
       words: sched.words,
       timingQuality: 'good',
     };
+    this.dynamicRefs.set(verseId, dyn);
+    return dyn;
+  }
+
+  /** Updates the cached `ReferenceVerse` with exact CTC-aligned word timings once the Aliyah audio has been prepared. */
+  updateAlignedReference(
+    verseId: string,
+    aligned: { startMs: number; endMs: number; words: { startMs: number; endMs: number; confidence: number }[]; timingQuality: 'good' | 'check' },
+  ): void {
+    const dyn = this.dynamicRefs.get(verseId);
+    if (dyn) {
+      dyn.startMs = aligned.startMs;
+      dyn.endMs = aligned.endMs;
+      dyn.words = aligned.words;
+      dyn.timingQuality = aligned.timingQuality;
+    }
   }
 
   /** Spec §3.3: what is available for this verse, stated separately for content, audio and analysis. */

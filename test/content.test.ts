@@ -26,6 +26,7 @@ import {
   type OnlineCouponsManifest,
 } from '../src/app/core/coupons';
 import { computeSyntheticVerseSchedule, synthesizeCantillationWav } from '../src/app/audio/cantillation-synth';
+import { asaelCommonsFileName, asaelCommonsUrl } from '../src/app/torah/asael-catalog';
 import { decodeWav } from '../src/app/audio/wav';
 import { detectPitch, medianVoicedHz } from '../src/app/audio/pitch';
 
@@ -170,6 +171,16 @@ test('all 5 books of the Torah (54 parashot, 5846 verses) are catalogued and val
   assert.equal(catalog.portions.length, 54);
   const totalCatalogVerses = catalog.portions.reduce((s: number, p: { totalVerses: number }) => s + p.totalVerses, 0);
   assert.equal(totalCatalogVerses, 5846);
+
+  // Every single one of the 54 Parashot x 7 Aliyot (= 378 Aliyot) maps to a real Asael Israeli Wikimedia Commons recording
+  for (const p of catalog.portions as { id: string }[]) {
+    for (let aliyah = 1; aliyah <= 7; aliyah++) {
+      const fn = asaelCommonsFileName(p.id, aliyah);
+      const url = asaelCommonsUrl(p.id, aliyah);
+      assert.ok(fn && fn.endsWith('Asael.oga'), `${p.id} aliyah ${aliyah} has valid Asael filename`);
+      assert.ok(url && url.startsWith('https://commons.wikimedia.org/wiki/Special:FilePath/'), `${p.id} aliyah ${aliyah} has valid Commons URL`);
+    }
+  }
 
   // Spot-check first parasha of each book on disk + verify cantillation reference audio & timings synthesis
   for (const pid of ['bereshit', 'noach', 'shemot', 'vayikra', 'bamidbar', 'devarim', 'vzot-haberachah']) {

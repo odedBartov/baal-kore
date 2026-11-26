@@ -51,7 +51,7 @@ import { PitchChartComponent, type ChartSeries } from '../visualization/pitch-ch
           <Button class="btn" textWrap="true" [text]="playback.playing() === 'ref' ? 'עצירה' : preparing() ? 'מכין את ההקלטה…' : 'השמעת הקורא'" (tap)="listen()"
             [isEnabled]="!rec.active() && !analyzing() && !preparing()"></Button>
           @if (refSeries().length) {
-            <pitch-chart title="המנגינה של הקורא" [series]="refSeries()" [durationMs]="refContour()!.durationMs" [wordStartsMs]="refStarts" [words]="chartWords" [activeWord]="activeWord()"
+            <pitch-chart title="המנגינה של הקורא" [series]="refSeries()" [durationMs]="refContour()!.durationMs" [wordStartsMs]="refStarts()" [words]="chartWords" [activeWord]="activeWord()"
               [playheadMs]="playback.playing() === 'ref' ? playback.positionMs() : null" [yad]="true" [width]="chartW"></pitch-chart>
           }
         } @else {
@@ -96,7 +96,7 @@ export class PracticeComponent implements OnDestroy {
   readonly ref = this.content.referenceFor(this.verse.id);
   readonly cov = this.content.coverage(this.verse.id);
   readonly refBadge = this.cov.reference === 'approved' ? 'הקלטת קורא מאושרת' : this.cov.reference === 'pending' ? 'הקלטת קורא אמיתי – ממתינה לאישור מומחה' : 'בדיקת מילים וניקוד';
-  readonly refStarts = this.ref?.words.map((w) => w.startMs) ?? [];
+  readonly refStarts = signal<number[]>(this.ref?.words.map((w) => w.startMs) ?? []);
 
   goBack(): void {
     goBack(this.nav, ['/portion', this.portionMeta.id], { aliyah: this.verse.aliyah });
@@ -112,7 +112,7 @@ export class PracticeComponent implements OnDestroy {
   readonly refContour = signal<ContourResult | null>(null);
   readonly last = signal(this.store.evaluations.get(this.verse.id));
 
-  readonly activeWord = computed(() => (this.playback.playing() === 'ref' ? wordAt(this.playback.positionMs(), this.refStarts) : null));
+  readonly activeWord = computed(() => (this.playback.playing() === 'ref' ? wordAt(this.playback.positionMs(), this.refStarts()) : null));
   readonly refSeries = computed<ChartSeries[]>(() => (this.refContour() ? [{ points: this.refContour()!.semitones, color: '#2f6fd0', lane: true }] : []));
   readonly chartWords = this.verse.words.map((w) => stripAccents(w.text));
   readonly lastSeries = computed<ChartSeries[]>(() => (this.last() ? [{ points: this.last()!.charts.student.semitones, color: '#e07b00' }] : []));
@@ -134,7 +134,10 @@ export class PracticeComponent implements OnDestroy {
     if (this.ref)
       this.audio
         .referenceWav(this.verse.id, this.ref)
-        .then((w) => this.audio.contour(w))
+        .then((w) => {
+          this.refStarts.set(this.ref?.words.map((x) => x.startMs) ?? []);
+          return this.audio.contour(w);
+        })
         .then((c) => this.refContour.set(c))
         .catch((e) => this.error.set(`לא הצלחתי להכין את הקלטת הקורא: ${e}`));
   }
@@ -154,6 +157,7 @@ export class PracticeComponent implements OnDestroy {
     this.preparing.set(true);
     try {
       const file = await this.audio.referenceWav(this.verse.id, this.ref);
+      this.refStarts.set(this.ref?.words.map((x) => x.startMs) ?? []);
       this.line.set(rabbiSays({ kind: 'listening' }));
       this.playback.play(file, 'ref');
     } catch (e) {

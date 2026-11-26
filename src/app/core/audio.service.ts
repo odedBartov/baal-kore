@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { File, Folder, knownFolders, path } from '@nativescript/core';
 import { Player, Recorder } from '../audio/audio-io';
-import type { ContourResult, WorkerRequest, WorkerResult } from '../audio/analysis.worker';
+import type { ContourResult, PreparedVerseResult, WorkerRequest, WorkerResult } from '../audio/analysis.worker';
 import type { EvalCharts } from '../analysis/evaluate';
 import type { VerseEvaluation } from '../analysis/types';
 import type { VerseData } from '../torah/model';
@@ -19,6 +19,7 @@ export class AudioService {
   private seq = 0;
   private pending = new Map<number, { resolve: (r: WorkerResult) => void; reject: (e: Error) => void }>();
   private contours = new Map<string, Promise<ContourResult>>();
+  private refJobs = new Map<string, Promise<string>>();
 
   run<T extends WorkerResult>(req: WorkerRequest): Promise<T> {
     if (!this.worker) {
@@ -59,18 +60,53 @@ export class AudioService {
     return Promise.all([knownFolders.documents().getFolder('recordings').clear(), knownFolders.temp().getFolder('recordings').clear()]).then(() => undefined);
   }
 
-  /** The verse's segment of the original reference recording (or on-device Masoretic cantillation synthesis), decoded once to WAV. */
+  /** The verse's segment of Asael Israeli's human recording (bundled for Bereshit, downloaded & CTC-aligned for all other 53 Parashot), decoded once to WAV. */
   async referenceWav(verseId: string, ref: ReferenceVerse): Promise<string> {
-    const dst = path.join(this.folder(knownFolders.temp(), 'reference-v3', ref.readerId), `${verseId}.wav`);
-    if (!File.exists(dst)) {
-      if (ref.file.startsWith('SYNTH:')) {
-        const verse = this.content.verse(verseId)!;
-        await this.run({ type: 'synth-reference', dst, verse });
-      } else {
-        await this.run({ type: 'decode', src: ref.file, dst, startMs: ref.startMs, endMs: ref.endMs });
+    const existingJob = this.refJobs.get(verseId);
+    if (existingJob) return existingJob;
+
+    const job = (async () => {
+      const dst = path.join(this.folder(knownFolders.temp(), 'reference-v4', ref.readerId), `${verseId}.wav`);
+      if (ref.file.startsWith('ASAEL:')) {
+        const [, portionId, aliyahStr] = ref.file.split(':');
+        const aliyah = Number(aliyahStr) || 1;
+        const portion = this.content.getPortion(portionId);
+        const cacheDir = this.folder(knownFolders.documents(), 'asael-reference-cache');
+        const res = await this.run<PreparedVerseResult>({
+          type: 'prepare-asael-verse',
+          portionId,
+          aliyah,
+          verseId,
+          dstWav: dst,
+          cacheDir,
+          portionVerses: portion.verses.map((v) => ({
+            id: v.id,
+            aliyah: v.aliyah,
+            words: v.words.map((w) => ({ spoken: w.spoken, syllables: Math.max(1, w.syllables.length) })),
+          })),
+        });
+        ref.startMs = res.startMs;
+        ref.endMs = res.endMs;
+        ref.words = res.words;
+        ref.timingQuality = res.timingQuality;
+        this.content.updateAlignedReference(verseId, res);
+      } else if (!File.exists(dst)) {
+        if (ref.file.startsWith('SYNTH:')) {
+          const verse = this.content.verse(verseId)!;
+          await this.run({ type: 'synth-reference', dst, verse });
+        } else {
+          await this.run({ type: 'decode', src: ref.file, dst, startMs: ref.startMs, endMs: ref.endMs });
+        }
       }
+      return dst;
+    })();
+
+    this.refJobs.set(verseId, job);
+    try {
+      return await job;
+    } finally {
+      this.refJobs.delete(verseId);
     }
-    return dst;
   }
 
   /** Words first..last of the reference, cut exactly into their own file (played whole: no seek or stop latency). */

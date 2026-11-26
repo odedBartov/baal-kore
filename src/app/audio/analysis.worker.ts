@@ -3,6 +3,8 @@
 import '@nativescript/core/globals';
 import { getFileAccess } from '@nativescript/core';
 import { synthesizeCantillationWav, SYNTH_SAMPLE_RATE } from './cantillation-synth';
+import { alignAliyahRecording, type AlignableVerse, type AlignedVerseTiming } from './aliyah-align';
+import { asaelCommonsUrl, preAlignedTimingsUrl } from '../torah/asael-catalog';
 import { decodeWav, encodeWav, resample } from './wav';
 import { detectPitch, medianVoicedHz, signalQuality, type PitchFrame, type SignalQuality } from './pitch';
 import { mfcc } from './mfcc';
@@ -22,7 +24,10 @@ const RATE = 16000;
 declare const com: {
   baalkore: {
     app: {
-      AudioDecoder: { decodeToWav(src: string, dst: string, startMs: number, endMs: number): number };
+      AudioDecoder: {
+        decodeToWav(src: string, dst: string, startMs: number, endMs: number): number;
+        downloadIfMissing(url: string, dst: string): boolean;
+      };
       PhoneModel: new (modelPath: string, threads: number) => { logProbsToFile(featPath: string, n: number, out: string): number };
       CtcModel: {
         new (modelPath: string, columns: string, threads: number): { logProbsToFile(wav: string, out: string): number };
@@ -35,6 +40,15 @@ declare const com: {
 
 export type WorkerRequest =
   | { type: 'decode'; src: string; dst: string; startMs: number; endMs: number }
+  | {
+      type: 'prepare-asael-verse';
+      portionId: string;
+      aliyah: number;
+      verseId: string;
+      dstWav: string;
+      cacheDir: string;
+      portionVerses: AlignableVerse[];
+    }
   | { type: 'synth-reference'; dst: string; verse: VerseData }
   | { type: 'clip'; src: string; dst: string; words: { startMs: number; endMs: number }[]; first: number; last: number }
   | { type: 'contour'; wav: string }
@@ -70,7 +84,22 @@ export interface CompareResult {
   recordings: { path: string; frames: PitchFrame[]; medianHz: number | null; quality: SignalQuality; timingsMs: Record<string, number> }[];
   alignment: { aToB: number[]; normalizedCost: number; comparison: ContourComparison; dtwMs: number } | null;
 }
-export type WorkerResult = { sampleRate: number } | { startMs: number; endMs: number } | ContourResult | CtcStatus | { evaluation: VerseEvaluation; charts: EvalCharts; timingsMs: Record<string, number> } | LessonCheck | CompareResult | Record<string, never>;
+export interface PreparedVerseResult {
+  startMs: number;
+  endMs: number;
+  words: { startMs: number; endMs: number; confidence: number }[];
+  timingQuality: 'good' | 'check';
+}
+export type WorkerResult =
+  | { sampleRate: number }
+  | { startMs: number; endMs: number }
+  | PreparedVerseResult
+  | ContourResult
+  | CtcStatus
+  | { evaluation: VerseEvaluation; charts: EvalCharts; timingsMs: Record<string, number> }
+  | LessonCheck
+  | CompareResult
+  | Record<string, never>;
 
 const ctx = self as unknown as { onmessage: (m: { data: { id: number; req: WorkerRequest } }) => void; postMessage(r: { id: number; ok: boolean; result?: WorkerResult; error?: string }): void };
 
@@ -154,10 +183,116 @@ function contour(wav: string): ContourResult {
   return { durationMs: (x.length / RATE) * 1000, medianHz: med, semitones: frames.map((f) => (f.frequencyHz && med ? +(12 * Math.log2(f.frequencyHz / med)).toFixed(2) : null)), quality: signalQuality(x, RATE, frames) };
 }
 
+function readJsonMap(filePath: string): Record<string, AlignedVerseTiming> {
+  try {
+    const f = new java.io.File(filePath);
+    if (!f.exists() || f.length() < 2) return {};
+    const bytes = java.nio.file.Files.readAllBytes(f.toPath());
+    const str = String(new java.lang.String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+    const parsed = JSON.parse(str);
+    if (parsed && typeof parsed === 'object') {
+      return (parsed.verses && typeof parsed.verses === 'object' ? parsed.verses : parsed) as Record<string, AlignedVerseTiming>;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function writeJsonMap(filePath: string, data: Record<string, AlignedVerseTiming>): void {
+  const f = new java.io.File(filePath);
+  const parent = f.getParentFile();
+  if (parent && !parent.exists()) parent.mkdirs();
+  const jStr = new java.lang.String(JSON.stringify(data));
+  java.nio.file.Files.write(f.toPath(), jStr.getBytes(java.nio.charset.StandardCharsets.UTF_8), java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
+}
+
+/**
+ * Downloads (if needed) Asael Israeli's real human Aliyah recording from Wikimedia Commons,
+ * aligns it against the Masoretic Torah text using on-device CTC forced alignment (or pre-aligned timings from GitHub),
+ * caches the timings for the whole Aliyah, and extracts the requested verse WAV.
+ */
+function prepareAsaelVerse(req: Extract<WorkerRequest, { type: 'prepare-asael-verse' }>): PreparedVerseResult {
+  const timingsPath = `${req.cacheDir}/timings-${req.portionId}.json`;
+  const timingsFile = new java.io.File(timingsPath);
+
+  // 1. Try downloading pre-aligned timings JSON from GitHub if we don't have local timings yet
+  if (!timingsFile.exists() || timingsFile.length() < 10) {
+    try {
+      com.baalkore.app.AudioDecoder.downloadIfMissing(preAlignedTimingsUrl(req.portionId), timingsPath);
+    } catch {
+      // Ignore network/404 if pre-aligned file is not on GitHub yet; we will align on-device below.
+    }
+  }
+
+  const timingsMap = readJsonMap(timingsPath);
+
+  const alignOneAliyah = (al: number) => {
+    const url = asaelCommonsUrl(req.portionId, al);
+    if (!url) throw new Error(`לא נמצאה הקלטת קורא לעלייה ${al} בפרשה זו.`);
+    const ogaPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}.oga`;
+    const ok = com.baalkore.app.AudioDecoder.downloadIfMissing(url, ogaPath);
+    if (!ok) throw new Error(`לא ניתן להוריד את הקלטת העלייה (${req.portionId} עלייה ${al}). בדקו חיבור לאינטרנט.`);
+
+    const fullWavPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}-full.wav`;
+    com.baalkore.app.AudioDecoder.decodeToWav(ogaPath, fullWavPath, 0, 0);
+    const x = read16k(fullWavPath);
+    const wav16kPath = `${req.cacheDir}/${req.portionId}-aliyah-${al}-16k.wav`;
+    writeBytes(wav16kPath, encodeWav(x, RATE));
+    const ctc = ctcFor(wav16kPath);
+    try {
+      new java.io.File(fullWavPath).delete();
+      new java.io.File(wav16kPath).delete();
+      new java.io.File(wav16kPath + '.lp').delete();
+    } catch {
+      // ignore cleanup errors
+    }
+
+    const aligned = alignAliyahRecording(x, ctc, req.portionVerses, al);
+    Object.assign(timingsMap, aligned);
+    writeJsonMap(timingsPath, timingsMap);
+  };
+
+  if (!timingsMap[req.verseId]) {
+    alignOneAliyah(req.aliyah);
+  }
+  // Handle Tikkun Aliyah split differences (e.g. if Asael split Aliyah N/N+1 a few verses earlier or later than Sefaria)
+  if (!timingsMap[req.verseId] && req.aliyah > 1) {
+    alignOneAliyah(req.aliyah - 1);
+  }
+  if (!timingsMap[req.verseId] && req.aliyah < 7) {
+    alignOneAliyah(req.aliyah + 1);
+  }
+
+  const vt = timingsMap[req.verseId];
+  if (!vt) {
+    throw new Error(`לא ניתן היה לתזמן את פסוק ${req.verseId} מתוך הקלטת העלייה.`);
+  }
+
+  const targetAliyah = vt.aliyahFile || req.aliyah;
+  const ogaUrl = asaelCommonsUrl(req.portionId, targetAliyah)!;
+  const ogaPath = `${req.cacheDir}/${req.portionId}-aliyah-${targetAliyah}.oga`;
+  com.baalkore.app.AudioDecoder.downloadIfMissing(ogaUrl, ogaPath);
+  com.baalkore.app.AudioDecoder.decodeToWav(ogaPath, req.dstWav, Math.round(vt.startMs), Math.round(vt.endMs));
+
+  return {
+    startMs: vt.startMs,
+    endMs: vt.endMs,
+    words: vt.words.map(([s, e, c]) => ({
+      startMs: Math.max(0, s - vt.startMs),
+      endMs: Math.max(40, e - vt.startMs),
+      confidence: c,
+    })),
+    timingQuality: vt.quality,
+  };
+}
+
 function handle(req: WorkerRequest): WorkerResult {
   switch (req.type) {
     case 'decode':
       return { sampleRate: com.baalkore.app.AudioDecoder.decodeToWav(req.src, req.dst, Math.round(req.startMs), Math.round(req.endMs)) };
+    case 'prepare-asael-verse':
+      return prepareAsaelVerse(req);
     case 'synth-reference': {
       const wavBuf = synthesizeCantillationWav(req.verse);
       writeBytes(req.dst, wavBuf);

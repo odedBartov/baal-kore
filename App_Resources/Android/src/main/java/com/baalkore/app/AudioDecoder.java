@@ -9,7 +9,10 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +25,66 @@ import java.nio.charset.StandardCharsets;
  */
 public final class AudioDecoder {
     private AudioDecoder() {
+    }
+
+    /**
+     * Downloads a remote file (e.g. an Asael Israeli Aliyah .oga recording from Wikimedia Commons or pre-aligned timings JSON)
+     * to `dstPath` if not already cached locally. Follows HTTP/HTTPS redirects and writes atomically via a `.tmp` file.
+     * Returns true if the file exists (or was downloaded) with size > 0, or false if the remote URL returned 404.
+     */
+    public static boolean downloadIfMissing(String urlStr, String dstPath) throws IOException {
+        File dstFile = new File(dstPath);
+        if (dstFile.exists() && dstFile.length() > 64) {
+            return true;
+        }
+        File parent = dstFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        File tmpFile = new File(dstPath + ".tmp");
+        String currentUrl = urlStr;
+        HttpURLConnection conn = null;
+        try {
+            for (int redirects = 0; redirects < 6; redirects++) {
+                URL url = new URL(currentUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(true);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                conn.setRequestProperty("User-Agent", "BaalKoreTorahTutor/1.0 (https://github.com/odedBartov/baal-kore; Android)");
+                int code = conn.getResponseCode();
+                if (code == HttpURLConnection.HTTP_MOVED_PERM || code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_SEE_OTHER || code == 307 || code == 308) {
+                    String loc = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    if (loc == null || loc.isEmpty()) throw new IOException("Redirect without Location header");
+                    currentUrl = loc;
+                    continue;
+                }
+                if (code == HttpURLConnection.HTTP_NOT_FOUND) {
+                    return false;
+                }
+                if (code < 200 || code >= 300) {
+                    throw new IOException("HTTP " + code + " from " + currentUrl);
+                }
+                try (InputStream in = conn.getInputStream();
+                     BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tmpFile), 1 << 16)) {
+                    byte[] buf = new byte[1 << 15];
+                    int r;
+                    while ((r = in.read(buf)) > 0) {
+                        out.write(buf, 0, r);
+                    }
+                }
+                if (dstFile.exists()) dstFile.delete();
+                if (!tmpFile.renameTo(dstFile)) {
+                    throw new IOException("Failed to move downloaded file to " + dstPath);
+                }
+                return dstFile.length() > 0;
+            }
+            throw new IOException("Too many redirects for " + urlStr);
+        } finally {
+            if (conn != null) conn.disconnect();
+            if (tmpFile.exists()) tmpFile.delete();
+        }
     }
 
     public static int decodeToWav(String src, String dst, long startMs, long endMs) throws IOException {
